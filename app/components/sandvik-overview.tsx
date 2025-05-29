@@ -16,6 +16,7 @@ import {
 } from "recharts"
 import { Badge } from "@/components/ui/badge"
 import { MapPin, DollarSign, TrendingUp, Users } from "lucide-react"
+import WorldMap from "./world-map"
 
 const businessAreas = [
   {
@@ -110,6 +111,9 @@ export default function SandvikOverview() {
           </CardContent>
         </Card>
       </div>
+
+      {/* World Map */}
+      <WorldMap />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Business Areas Breakdown */}
