@@ -30,6 +30,13 @@ const navItems = [
 ]
 
 export default function StrategicCockpitPage() {
+  // Near the top of the StrategicCockpitPage component
+
+  // 1. Define header height for consistent use
+  const HEADER_HEIGHT_PX = 76 // Calculated based on content and padding
+  const HEADER_BORDER_PX = 1
+  const STICKY_TOP_OFFSET_PX = HEADER_HEIGHT_PX + HEADER_BORDER_PX
+
   const [activeTab, setActiveTab] = useState("overview")
 
   const renderContent = () => {
@@ -52,30 +59,35 @@ export default function StrategicCockpitPage() {
   return (
     <AuthGuard>
       <div className="flex flex-col min-h-screen bg-gray-100">
-        <header className="p-4 border-b bg-slate-800 text-white shadow-md sticky top-0 z-40">
-          <div className="max-w-7xl mx-auto flex items-center justify-between">
-            <div className="flex items-center">
-              <Image
-                src="/scc-logo-white.png"
-                alt="Supply Chain Companions Logo"
-                width={40}
-                height={40}
-                className="mr-3"
-                priority
-              />
-              <div>
-                <h1 className="text-xl font-semibold">Supply Chain Companions</h1>
-                <h2 className="text-2xl font-bold">Strategic Cockpit</h2>
+        <header className="bg-slate-800 text-white shadow-md sticky top-0 z-40 border-b">
+          {/* This div centers the header content and provides consistent horizontal padding */}
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className={`flex items-center justify-between h-[${HEADER_HEIGHT_PX}px]`}>
+              <div className="flex items-center">
+                <Image
+                  src="/scc-logo-white.png"
+                  alt="Supply Chain Companions Logo"
+                  width={40}
+                  height={40}
+                  className="mr-3"
+                  priority
+                />
+                <div>
+                  <h1 className="text-xl font-semibold">Supply Chain Companions</h1>
+                  <h2 className="text-2xl font-bold">Strategic Cockpit</h2>
+                </div>
               </div>
+              <p className="text-sm text-slate-300 hidden md:block">Sandvik Group Supply Chain Cockpit</p>
             </div>
-            <p className="text-sm text-slate-300 hidden md:block">Sandvik Group Supply Chain Cockpit</p>
           </div>
         </header>
 
-        <div className="flex flex-1 max-w-7xl mx-auto w-full">
+        <div className={`flex-1 max-w-7xl mx-auto w-full flex`}>
           {/* Branded Sidebar Navigation */}
-          <aside className="w-64 bg-slate-800 text-slate-200 p-4 flex flex-col justify-between sticky top-[73px] h-[calc(100vh-73px)]">
-            <div className="flex-grow">
+          <aside
+            className={`w-64 bg-slate-800 text-slate-200 flex flex-col justify-between sticky top-[${STICKY_TOP_OFFSET_PX}px] h-[calc(100vh-${STICKY_TOP_OFFSET_PX}px)]`}
+          >
+            <div className="flex-grow px-4 pt-4">
               <TooltipProvider delayDuration={0}>
                 <nav className="space-y-2">
                   {navItems.map((item) => {
@@ -88,15 +100,15 @@ export default function StrategicCockpitPage() {
                           <Button
                             variant="ghost"
                             onClick={() => setActiveTab(item.id)}
-                            className={`w-full justify-start items-center space-x-3 px-3 py-2.5 rounded-lg transition-all duration-200 ease-in-out
-                              ${
-                                isActive
-                                  ? isSimulation
-                                    ? "bg-green-500/20 text-green-300 font-semibold"
-                                    : "bg-slate-700 text-white font-semibold"
-                                  : "text-slate-300 hover:bg-slate-700 hover:text-white"
-                              }
-                            `}
+                            className={`w-full justify-start items-center space-x-3 py-2.5 rounded-lg transition-all duration-200 ease-in-out
+                            ${
+                              isActive
+                                ? isSimulation
+                                  ? "bg-green-500/20 text-green-300 font-semibold"
+                                  : "bg-slate-700 text-white font-semibold"
+                                : "text-slate-300 hover:bg-slate-700 hover:text-white"
+                            }
+                          `}
                           >
                             <item.icon className="h-5 w-5" />
                             <span className="text-sm">{item.label}</span>
@@ -113,12 +125,14 @@ export default function StrategicCockpitPage() {
             </div>
 
             {/* User Profile Section */}
-            <div className="mt-4">
+            <div className="mt-auto p-4">
+              {" "}
+              {/* mt-auto pushes it to the bottom of the flex container */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
-                    className="w-full justify-start items-center space-x-3 px-3 py-2.5 rounded-lg hover:bg-slate-700"
+                    className="w-full justify-start items-center space-x-3 py-2.5 rounded-lg hover:bg-slate-700"
                   >
                     <Avatar className="h-8 w-8">
                       <AvatarImage src="/placeholder.svg?width=32&height=32" />
