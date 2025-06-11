@@ -33,7 +33,7 @@ export default function StrategicCockpitPage() {
   // Near the top of the StrategicCockpitPage component
 
   // 1. Define header height for consistent use
-  const HEADER_HEIGHT_PX = 80
+  const HEADER_HEIGHT_PX = 68
   const HEADER_BORDER_PX = 1
   const STICKY_TOP_OFFSET_PX = HEADER_HEIGHT_PX + HEADER_BORDER_PX
 
@@ -67,13 +67,13 @@ export default function StrategicCockpitPage() {
                 <Image
                   src="/scc-logo-white.png"
                   alt="Supply Chain Companions Logo"
-                  width={291}
-                  height={64}
-                  className="mr-6"
+                  width={218}
+                  height={48}
+                  className="mr-4"
                   priority
                 />
                 <div>
-                  <h2 className="text-3xl font-bold">Strategic Cockpit</h2>
+                  <h2 className="text-2xl font-bold">Strategic Cockpit</h2>
                 </div>
               </div>
               <p className="text-sm text-slate-300 hidden md:block">Sandvik Group Supply Chain Cockpit</p>
