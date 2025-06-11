@@ -186,8 +186,20 @@ const ContextualInsightsPanel: React.FC<ContextualInsightsPanelProps> = ({ activ
     return insights.filter((insight) => insight.type === activeInsightType)
   }, [insights, activeInsightType])
 
-  const getSentimentClasses = (sentiment?: ApiInsight["sentiment"]) => {
-    switch (sentiment) {
+  const getCardStyleClasses = (insight: ApiInsight): string => {
+    if (insight.type === "ai") {
+      return "border-l-4 border-purple-500"
+    }
+    if (insight.type === "news") {
+      return "border-l-4 border-orange-500"
+    }
+    if (insight.type === "manual") {
+      // Using a distinct blue for manual/curated insights
+      return "border-l-4 border-sky-500"
+    }
+
+    // Fallback to sentiment for any other cases or if type is not explicitly handled above
+    switch (insight.sentiment) {
       case "positive":
         return "border-l-4 border-green-500"
       case "negative":
@@ -286,7 +298,7 @@ const ContextualInsightsPanel: React.FC<ContextualInsightsPanelProps> = ({ activ
                       key={insight.id}
                       className={cn(
                         "bg-white dark:bg-slate-800/70 shadow-sm hover:shadow-md transition-shadow",
-                        getSentimentClasses(insight.sentiment),
+                        getCardStyleClasses(insight),
                       )}
                     >
                       <CardHeader className="py-3 px-4">

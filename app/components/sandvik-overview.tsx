@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Card, CardContent, CardTitle } from "@/components/ui/card"
 import { DollarSign, Building, Users, Factory, FlaskConical, Warehouse, Briefcase } from "lucide-react"
 import WorldMap from "./world-map"
+import OverviewStrategicSummary from "./overview-strategic-summary"
 
 const kpiData = [
   { title: "Total Revenue 2024", value: "SEK 122.9B", icon: DollarSign, change: "+3.2%", changeType: "increase" },
@@ -43,8 +44,11 @@ export default function SandvikOverview() {
             </CardContent>
           </Card>
         ))}
+      </div>{" "}
+      {/* End of KPI Cards grid */}
+      <div className="my-6">
+        <OverviewStrategicSummary />
       </div>
-
       {/* Global Footprint Map */}
       <Card className="transition-all duration-300 hover:shadow-xl">
         <CardContent className="h-[500px] p-0">

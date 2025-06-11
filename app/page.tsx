@@ -22,6 +22,7 @@ import {
   Loader2,
   Rocket,
   ShieldAlert,
+  Swords,
   KeyIcon as CriticalMaterialsIcon,
 } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
@@ -48,7 +49,7 @@ const FinancialsSection = dynamic(() => import("@/app/components/financials-sect
   loading: () => (
     <div className="flex items-center justify-center min-h-[400px]">
       <Loader2 className="h-8 w-8 animate-spin text-brand-accent" />
-      <p className="ml-2 text-lg text-slate-500">Loading Financials Component...</p>
+      <p className="ml-2 text-lg text-slate-500">Loading Financials...</p>
     </div>
   ),
 })
@@ -58,7 +59,7 @@ const StrategicDirectionSection = dynamic(() => import("@/app/components/strateg
   loading: () => (
     <div className="flex items-center justify-center min-h-[400px]">
       <Loader2 className="h-8 w-8 animate-spin text-brand-accent" />
-      <p className="ml-2 text-lg text-slate-500">Loading Strategic Direction Component...</p>
+      <p className="ml-2 text-lg text-slate-500">Loading Strategic Direction...</p>
     </div>
   ),
 })
@@ -68,7 +69,18 @@ const ChallengesAndRisksSection = dynamic(() => import("@/app/components/challen
   loading: () => (
     <div className="flex items-center justify-center min-h-[400px]">
       <Loader2 className="h-8 w-8 animate-spin text-brand-accent" />
-      <p className="ml-2 text-lg text-slate-500">Loading Challenges & Risks Component...</p>
+      <p className="ml-2 text-lg text-slate-500">Loading Challenges & Risks...</p>
+    </div>
+  ),
+})
+
+// New dynamic import for Competitive Landscape
+const CompetitiveLandscapeSection = dynamic(() => import("@/app/components/competitive-landscape-section"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center min-h-[400px]">
+      <Loader2 className="h-8 w-8 animate-spin text-brand-accent" />
+      <p className="ml-2 text-lg text-slate-500">Loading Competitive Landscape...</p>
     </div>
   ),
 })
@@ -96,6 +108,7 @@ const navItems: NavItem[] = [
       { id: "financials", label: "Financials", icon: DollarSign, parentId: "overview" },
       { id: "strategic-direction", label: "Strategic Direction", icon: Rocket, parentId: "overview" },
       { id: "challenges-risks", label: "Challenges & Risks", icon: ShieldAlert, parentId: "overview" },
+      { id: "competitive-landscape", label: "Competitive Landscape", icon: Swords, parentId: "overview" }, // New SubMenu
     ],
   },
   { id: "manufacturing", label: "Manufacturing", icon: Building2 },
@@ -109,6 +122,7 @@ const VALID_API_INSIGHT_TABS = [
   "financials",
   "strategic-direction",
   "challenges-risks",
+  "competitive-landscape", // Added new tab
   "manufacturing",
   "materials",
   "logistics",
@@ -187,6 +201,19 @@ export default function StrategicCockpitPage() {
             }
           >
             <ChallengesAndRisksSection />
+          </Suspense>
+        )
+      case "competitive-landscape": // New case for the new view
+        return (
+          <Suspense
+            fallback={
+              <div className="flex items-center justify-center min-h-[400px]">
+                <Loader2 className="h-8 w-8 animate-spin text-brand-accent" />
+                <p className="ml-2 text-lg text-slate-500">Loading Competitive Landscape...</p>
+              </div>
+            }
+          >
+            <CompetitiveLandscapeSection />
           </Suspense>
         )
       case "manufacturing":
