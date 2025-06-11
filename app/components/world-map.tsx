@@ -7,11 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Building2, Factory, Wrench, Truck, Briefcase } from "lucide-react"
 
-// Use a more reliable world map topology
-const geoUrl = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json"
-
-// Fallback simple world outline if topology fails
-const fallbackWorldPath = "M-180,-90 L180,-90 L180,90 L-180,90 Z"
+// World map topology
+const geoUrl = "https://raw.githubusercontent.com/deldersveld/topojson/master/world-countries.json"
 
 // Location types with their respective colors and icons
 const locationTypes = {
@@ -156,43 +153,25 @@ export default function WorldMap() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="h-[500px] w-full overflow-hidden border rounded-lg bg-blue-50">
+        <div className="h-[500px] w-full">
           <ComposableMap
             projectionConfig={{
-              scale: 120,
-            }}
-            width={800}
-            height={400}
-            style={{
-              width: "100%",
-              height: "100%",
+              scale: 147,
             }}
           >
-            <ZoomableGroup center={[0, 0]} zoom={1} maxZoom={3}>
+            <ZoomableGroup center={[0, 0]} zoom={1}>
               <Geographies geography={geoUrl}>
                 {({ geographies }) =>
                   geographies.map((geo) => (
                     <Geography
                       key={geo.rsmKey}
                       geography={geo}
-                      fill="#E8F4FD"
-                      stroke="#B0BEC5"
-                      strokeWidth={0.5}
+                      fill="#EAEAEC"
+                      stroke="#D6D6DA"
                       style={{
-                        default: {
-                          outline: "none",
-                          fill: "#E8F4FD",
-                          stroke: "#B0BEC5",
-                        },
-                        hover: {
-                          outline: "none",
-                          fill: "#F0F8FF",
-                          stroke: "#90A4AE",
-                        },
-                        pressed: {
-                          outline: "none",
-                          fill: "#E3F2FD",
-                        },
+                        default: { outline: "none" },
+                        hover: { outline: "none", fill: "#F5F5F5" },
+                        pressed: { outline: "none" },
                       }}
                     />
                   ))
@@ -228,7 +207,7 @@ export default function WorldMap() {
           <Tooltip id="location-tooltip" html={tooltipContent} />
         </div>
 
-        <div className="mt-6 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 pt-4 border-t">
+        <div className="mt-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
           {Object.entries(locationTypes).map(([type, { color, name, icon: Icon }]) => (
             <div key={type} className="flex items-center gap-2">
               <div className="h-3 w-3 rounded-full" style={{ backgroundColor: color }}></div>
