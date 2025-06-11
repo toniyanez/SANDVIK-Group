@@ -1,235 +1,234 @@
 "use client"
 
 import type React from "react"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
-import {
-  AlertTriangle,
-  ShieldCheck,
-  CloudRain,
-  Car,
-  Plane,
-  Landmark,
-  Shuffle,
-  FileText,
-  Megaphone,
-  Factory,
-  Wrench,
-  DollarSign,
-  Zap,
-  Globe,
-  Recycle,
-  Lightbulb,
-  ShieldAlert,
-} from "lucide-react"
+import { AlertTriangle, ShieldAlert, Zap, TrendingDown, ShieldCheck } from "lucide-react"
 
-interface RiskItem {
+interface RiskCategory {
   id: string
-  icon: React.ElementType // Icon for the individual item card
   title: string
+  icon: React.ElementType
   description: string
-  category: "headwind" | "mitigation" | "opportunity"
+  risks: RiskItemProps[]
 }
 
-const challengesAndRisksData: RiskItem[] = [
+interface RiskItemProps {
+  id: string
+  title: string
+  description: string
+  impact: "High" | "Medium" | "Low"
+  likelihood: "High" | "Medium" | "Low"
+  mitigationStatus: "In Place" | "In Progress" | "Planned"
+  mitigationDetails?: string
+}
+
+const RiskItem: React.FC<RiskItemProps> = ({
+  title,
+  description,
+  impact,
+  likelihood,
+  mitigationStatus,
+  mitigationDetails,
+}) => {
+  const impactColor = {
+    High: "bg-red-100 text-red-700 border-red-300",
+    Medium: "bg-yellow-100 text-yellow-700 border-yellow-300",
+    Low: "bg-green-100 text-green-700 border-green-300",
+  }
+  const likelihoodColor = {
+    High: "text-red-600",
+    Medium: "text-yellow-600",
+    Low: "text-green-600",
+  }
+  const mitigationColor = {
+    "In Place": "bg-green-500 text-white",
+    "In Progress": "bg-blue-500 text-white",
+    Planned: "bg-slate-500 text-white",
+  }
+
+  return (
+    <Card className="mb-4 shadow-sm hover:shadow-md transition-shadow bg-slate-50 dark:bg-slate-700/30">
+      <CardHeader className="pb-3 pt-4 px-4">
+        <div className="flex justify-between items-start">
+          <CardTitle className="text-md font-semibold text-brand-dark dark:text-slate-200">{title}</CardTitle>
+          <span className={`px-2.5 py-1 text-xs font-semibold rounded-full border ${impactColor[impact]}`}>
+            {impact} Impact
+          </span>
+        </div>
+      </CardHeader>
+      <CardContent className="px-4 pb-3">
+        <p className="text-sm text-slate-600 dark:text-slate-300 mb-3">{description}</p>
+        <div className="grid grid-cols-2 gap-x-4 text-xs mb-3">
+          <div>
+            <span className="font-semibold text-slate-700 dark:text-slate-300">Likelihood: </span>
+            <span className={likelihoodColor[likelihood]}>{likelihood}</span>
+          </div>
+          <div>
+            <span className="font-semibold text-slate-700 dark:text-slate-300">Mitigation: </span>
+            <span className={`px-2 py-0.5 text-xs rounded-full ${mitigationColor[mitigationStatus]}`}>
+              {mitigationStatus}
+            </span>
+          </div>
+        </div>
+        {mitigationDetails && (
+          <p className="text-xs text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-600/30 p-2 rounded-md">
+            <span className="font-semibold">Details:</span> {mitigationDetails}
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+const challengesAndRisksData: RiskCategory[] = [
   {
-    id: "macro-headwind",
-    icon: CloudRain,
-    title: "Uncertain Macro Environment",
-    description: "Impacting cutting tools and infrastructure businesses due to generally low industrial activity.",
-    category: "headwind",
+    id: "geopolitical",
+    title: "Geopolitical & Macroeconomic Instability",
+    icon: AlertTriangle,
+    description: "Risks stemming from global political shifts, trade tensions, and economic volatility.",
+    risks: [
+      {
+        id: "gr1",
+        title: "Supply Chain Disruptions (Conflict Zones)",
+        description: "Impact on raw material sourcing and logistics from regions experiencing conflict or instability.",
+        impact: "High",
+        likelihood: "Medium",
+        mitigationStatus: "In Progress",
+        mitigationDetails:
+          "Actively diversifying supplier base for critical materials away from high-risk zones. Exploring alternative logistics corridors.",
+      },
+      {
+        id: "gr2",
+        title: "Trade Policy Changes & Tariffs",
+        description:
+          "Uncertainty in international trade policies leading to potential tariff impositions or trade barriers affecting cost and market access.",
+        impact: "Medium",
+        likelihood: "Medium",
+        mitigationStatus: "Planned",
+        mitigationDetails:
+          "Scenario planning for various tariff impacts. Lobbying efforts through industry associations. Reviewing regional manufacturing footprint.",
+      },
+    ],
   },
   {
-    id: "automotive-decline",
-    icon: Car,
-    title: "Automotive Sector Downturn",
-    description: 'Identified as the "most negative segment," experiencing a low-double-digit decline overall.',
-    category: "headwind",
-  },
-  {
-    id: "aerospace-inventory",
-    icon: Plane,
-    title: "Aerospace Order Slowdown (N. America)",
-    description:
-      "Flat to mid-single-digit decline in order intake as major customers work through existing inventories.",
-    category: "headwind",
-  },
-  {
-    id: "tariffs-trade-barriers",
-    icon: Landmark,
-    title: "Tariffs and Trade Barriers",
-    description:
-      'Limited direct margin impact currently, but primary concern is the "overall impact on the global economy" (indirect risk).',
-    category: "headwind",
-  },
-  {
-    id: "tariff-reroute-flows",
-    icon: Shuffle,
-    title: "Re-routing Trade Flows",
-    description: "Mitigating flows between China and the US; re-routing goods to Canada/Mexico to bypass tariffs.",
-    category: "mitigation",
-  },
-  {
-    id: "tariff-clauses",
-    icon: FileText,
-    title: "Revisiting Tariff Clauses",
-    description: "Updating commercial agreements to include or revise tariff clauses.",
-    category: "mitigation",
-  },
-  {
-    id: "tariff-customer-notify",
-    icon: Megaphone,
-    title: "Customer Notifications",
-    description: "Actively notifying customers of potential upcoming tariff surcharges where applicable.",
-    category: "mitigation",
-  },
-  {
-    id: "tariff-rebalance-production",
-    icon: Factory,
-    title: "Re-balancing Production Capacity",
-    description: "Shifting production between regions (e.g., Europe and the US) to optimize for tariffs.",
-    category: "mitigation",
-  },
-  {
-    id: "tariff-us-facilities",
-    icon: Wrench,
-    title: "Utilizing US Facilities",
-    description:
-      "Prepared to increase production in existing US facilities if tariff rates materially increase, avoiding greenfield investments.",
-    category: "mitigation",
-  },
-  {
-    id: "tariff-pricing-adjust",
-    icon: DollarSign,
-    title: "Pricing Adjustments",
-    description: "Considering pricing adjustments where appropriate to offset tariff costs.",
-    category: "mitigation",
-  },
-  {
-    id: "operational-agility",
+    id: "operational",
+    title: "Operational & Technological Risks",
     icon: Zap,
-    title: "Operational Agility",
-    description:
-      'Emphasizing "agile ways of acting" and leveraging "proven resilience on top and bottom line" to adapt to market shifts.',
-    category: "mitigation",
+    description: "Challenges related to manufacturing processes, technological adoption, and cybersecurity.",
+    risks: [
+      {
+        id: "or1",
+        title: "Cybersecurity Threats on OT/IT Systems",
+        description:
+          "Increased risk of cyberattacks targeting operational technology (OT) in manufacturing plants and integrated IT systems.",
+        impact: "High",
+        likelihood: "Medium",
+        mitigationStatus: "In Place",
+        mitigationDetails:
+          "Multi-layered security architecture, regular penetration testing, and employee awareness programs. Incident response plan updated quarterly.",
+      },
+      {
+        id: "or2",
+        title: "Skilled Labor Shortages for Advanced Manufacturing",
+        description:
+          "Difficulty in recruiting and retaining talent with skills in automation, robotics, and data analytics for modern manufacturing.",
+        impact: "Medium",
+        likelihood: "High",
+        mitigationStatus: "In Progress",
+        mitigationDetails:
+          "Partnerships with vocational schools and universities. Internal upskilling and reskilling programs. Competitive compensation and benefits.",
+      },
+    ],
   },
   {
-    id: "global-footprint-advantage",
-    icon: Globe,
-    title: "Global Footprint Advantage",
+    id: "market",
+    title: "Market & Competitive Risks",
+    icon: TrendingDown,
     description:
-      "Strong setup with manufacturing capabilities in all major regions, strong market positions, and customer relations enable effective management of geopolitical complexities.",
-    category: "mitigation",
+      "Risks arising from shifts in market demand, competitive pressures, and changing customer preferences.",
+    risks: [
+      {
+        id: "mr1",
+        title: "Rapid Technological Obsolescence",
+        description:
+          "Competitors introducing disruptive technologies that could render existing Sandvik products or solutions less competitive.",
+        impact: "Medium",
+        likelihood: "Medium",
+        mitigationStatus: "In Progress",
+        mitigationDetails:
+          "Increased R&D investment in emerging technologies. Active monitoring of competitor landscape and patent filings. Agile product development cycles.",
+      },
+    ],
   },
   {
-    id: "tungsten-opportunity",
-    icon: Recycle,
-    title: "Tungsten Raw Material Opportunity",
-    description:
-      "China's export restrictions on tungsten create demand for non-Chinese supply. Sandvik is a major provider and recycler, securing supply and offering a potential revenue upside.",
-    category: "opportunity",
+    id: "sustainability",
+    title: "Sustainability & Regulatory Risks",
+    icon: ShieldCheck,
+    description: "Risks related to environmental regulations, social responsibility, and governance compliance.",
+    risks: [
+      {
+        id: "sr1",
+        title: "Stricter Carbon Emission Standards",
+        description:
+          "New or more stringent regulations on carbon emissions impacting manufacturing processes and potentially increasing operational costs.",
+        impact: "Medium",
+        likelihood: "High",
+        mitigationStatus: "In Place",
+        mitigationDetails:
+          "Investment in energy-efficient technologies, renewable energy sourcing, and ongoing process optimization to reduce carbon footprint. Carbon offsetting for unavoidable emissions.",
+      },
+    ],
   },
 ]
 
-const ChallengesAndRisksSection: React.FC = () => {
-  const headwinds = challengesAndRisksData.filter((item) => item.category === "headwind")
-  const mitigations = challengesAndRisksData.filter((item) => item.category === "mitigation")
-  const opportunities = challengesAndRisksData.filter((item) => item.category === "opportunity")
-
-  // Define categories for accordion items
-  const accordionCategories = [
-    {
-      id: "headwinds",
-      value: "item-1", // Value for accordion item
-      title: "Macroeconomic & Geopolitical Headwinds",
-      TriggerIcon: AlertTriangle, // Icon for the accordion trigger
-      items: headwinds,
-      itemIconAccentColor: "text-red-500 dark:text-red-400", // Accent for icons within item cards
-    },
-    {
-      id: "mitigations",
-      value: "item-2",
-      title: "Mitigation Strategies & Resilience",
-      TriggerIcon: ShieldCheck,
-      items: mitigations,
-      itemIconAccentColor: "text-green-500 dark:text-green-400",
-    },
-    {
-      id: "opportunities",
-      value: "item-3",
-      title: "Emerging Opportunities",
-      TriggerIcon: Lightbulb,
-      items: opportunities,
-      itemIconAccentColor: "text-yellow-500 dark:text-yellow-400",
-    },
-  ]
-
+export default function ChallengesAndRisksSection() {
   return (
-    <div className="p-4 md:p-6 bg-slate-100 dark:bg-neutral-900 min-h-full">
-      {/* Header Card - Styled to match screenshot's dark header */}
-      <Card className="mb-8 bg-slate-800 dark:bg-neutral-800 shadow-xl rounded-lg overflow-hidden">
+    <div className="space-y-8 p-4 md:p-6 bg-slate-50 dark:bg-slate-900 rounded-lg">
+      {/* Header Card - Ensure class name matches tailwind.config.ts */}
+      <Card className="bg-brand-dark text-white shadow-xl">
+        {" "}
+        {/* Changed bg-brand-dark-blue to bg-brand-dark */}
         <CardHeader className="flex flex-row items-center space-x-4 p-6">
-          <ShieldAlert className="h-12 w-12 text-white flex-shrink-0" />
+          <ShieldAlert className="h-10 w-10 text-brand-accent" />
           <div>
-            <CardTitle className="text-2xl md:text-3xl font-bold text-white">
-              Challenges, Risks & Opportunities
+            <CardTitle className="text-2xl md:text-3xl font-bold tracking-tight">
+              Challenges & Risks Assessment
             </CardTitle>
-            <CardDescription className="text-slate-300 dark:text-slate-400 text-sm md:text-base mt-1">
-              Sandvik Group's proactive approach to navigating the evolving global landscape.
+            <CardDescription className="text-slate-300 text-sm">
+              Identifying, analyzing, and mitigating key challenges and risks impacting Sandvik's strategic objectives
+              and operational stability.
             </CardDescription>
           </div>
         </CardHeader>
       </Card>
 
-      {/* Accordion - First item open by default */}
       <Accordion
         type="multiple"
-        defaultValue={[accordionCategories[0].value]} // Open first section by default
-        className="w-full space-y-4"
+        defaultValue={challengesAndRisksData.map((cat) => cat.id)}
+        className="w-full space-y-6"
       >
-        {accordionCategories.map((category) =>
-          category.items.length > 0 ? (
-            <AccordionItem
-              value={category.value}
-              key={category.id}
-              className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm overflow-hidden"
-            >
-              <AccordionTrigger className="p-4 md:p-6 hover:no-underline text-lg md:text-xl font-semibold text-slate-800 dark:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                <div className="flex items-center w-full">
-                  <category.TriggerIcon className="w-6 h-6 mr-3 text-blue-600 dark:text-blue-400 flex-shrink-0" />
-                  <span className="text-left flex-grow">{category.title}</span>
+        {challengesAndRisksData.map((category) => (
+          <AccordionItem value={category.id} key={category.id} className="border-none">
+            <Card className="shadow-lg bg-white dark:bg-slate-800/60">
+              <AccordionTrigger className="bg-slate-100 dark:bg-slate-700/50 hover:bg-slate-200 dark:hover:bg-slate-700 px-6 py-4 rounded-t-lg w-full">
+                <div className="flex items-center text-lg font-semibold text-brand-dark dark:text-slate-100">
+                  <category.icon className="h-6 w-6 mr-3 text-brand-accent" />
+                  {category.title}
                 </div>
               </AccordionTrigger>
-              <AccordionContent className="p-4 md:p-6 pt-2 md:pt-4 bg-slate-50 dark:bg-slate-800/30">
+              <AccordionContent className="p-6 bg-white dark:bg-slate-800/30 rounded-b-lg">
+                <p className="text-sm text-slate-600 dark:text-slate-300 mb-6">{category.description}</p>
                 <div className="space-y-4">
-                  {category.items.map((item) => (
-                    <Card
-                      key={item.id}
-                      className="shadow-md hover:shadow-lg transition-shadow duration-300 ease-in-out bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600"
-                    >
-                      <CardHeader className="pb-2 md:pb-3">
-                        <div className="flex items-center space-x-3">
-                          <item.icon className={`w-5 h-5 ${category.itemIconAccentColor} flex-shrink-0`} />
-                          <CardTitle className="text-base md:text-lg font-medium text-slate-700 dark:text-slate-200">
-                            {item.title}
-                          </CardTitle>
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        <CardDescription className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                          {item.description}
-                        </CardDescription>
-                      </CardContent>
-                    </Card>
+                  {category.risks.map((risk) => (
+                    <RiskItem key={risk.id} {...risk} />
                   ))}
                 </div>
               </AccordionContent>
-            </AccordionItem>
-          ) : null,
-        )}
+            </Card>
+          </AccordionItem>
+        ))}
       </Accordion>
     </div>
   )
 }
-
-export default ChallengesAndRisksSection

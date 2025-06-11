@@ -35,7 +35,7 @@ const AiGeneratedInsightSchema = z.object({
       "Efficiency Gain",
       "New Opportunity",
       "Market Trend",
-      "Resilience Building",
+      "Resilience Building", // Added from previous version
     ])
     .describe("The primary category of the insight."),
   confidence: z
@@ -72,15 +72,19 @@ const AiGeneratedNewsItemSchema = z.object({
     ),
   publishedDate: z
     .string()
-    .datetime()
+    .datetime({ message: "Published date must be a valid ISO 8601 datetime string." })
     .describe(
       "An estimated publication date for this news item in ISO 8601 format, within the last 3 months from the current date.",
     ),
+  relevanceScore: z
+    .number()
+    .min(0)
+    .max(100)
+    .describe("A score (0-100) indicating relevance to the specified context/tab."),
   keywords: z
     .array(z.string())
     .optional()
     .describe("Keywords related to the news item and its relevance to the tab's context."),
-  // originalUrl: z.string().url().optional().describe("A plausible (but not necessarily real) URL for the news source."), // Keeping this commented as it's hard for AI to generate valid, real URLs
 })
 
 const AiGeneratedNewsFeedSchema = z.object({
@@ -108,10 +112,10 @@ type ApiInsight = {
   timestamp?: string // ISO 8601 string
   sourcesCheckedCount?: number
   detailedSources?: DetailedSource[]
-  type?: "ai" | "manual" | "news" // Added to distinguish insight types
+  type?: "ai" | "manual" | "news" // Ensure this is part of the type
 }
 
-// Predefined insights database (remains the same, these are 'manual' insights)
+// Predefined insights database
 const insightsDatabase: Record<string, ApiInsight[]> = {
   overview: [
     {
@@ -134,19 +138,6 @@ const insightsDatabase: Record<string, ApiInsight[]> = {
       ],
       sourcesCheckedCount: 2,
     },
-    {
-      iconName: "AlertTriangle",
-      title: "Red Sea Shipping Delays",
-      description:
-        "Ongoing Red Sea disruptions are impacting shipping lead times by an average of 10-14 days for EU-Asia routes. Contingency routing via Cape of Good Hope is active for critical shipments, incurring higher costs.",
-      badgeText: "High Impact Risk",
-      badgeVariant: "destructive",
-      source: "Global Logistics Monitoring Platform",
-      confidence: 95,
-      actionLink: { href: "#", text: "View Mitigation Plan", iconName: "FileText" },
-      timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-      type: "manual",
-    },
   ],
   financials: [
     {
@@ -161,22 +152,6 @@ const insightsDatabase: Record<string, ApiInsight[]> = {
       confidence: "Confirmed",
       actionLink: { href: "#", text: "View Full Report", iconName: "FileText" },
       timestamp: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-      type: "manual",
-      detailedSources: [
-        { name: "Sandvik Q3 Interim Report", contribution: "Provides official figures for sales, profit, and margin." },
-        { name: "Investor Presentation", contribution: "Offers commentary and context on financial performance." },
-      ],
-      sourcesCheckedCount: 2,
-    },
-    {
-      iconName: "TrendingUp",
-      title: "SMMS Margin Improvement",
-      description:
-        "The Manufacturing and Machining Solutions (SMMS) segment saw a notable margin improvement of 1.2pp in Q3, attributed to successful cost optimization programs and favorable product mix.",
-      badgeText: "Segment Performance",
-      source: "Internal Financial Analysis",
-      confidence: 92,
-      timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
       type: "manual",
     },
   ],
@@ -193,18 +168,6 @@ const insightsDatabase: Record<string, ApiInsight[]> = {
       confidence: 90,
       actionLink: { href: "#", text: "View Digital Roadmap", iconName: "FileText" },
       timestamp: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
-      type: "manual",
-    },
-    {
-      iconName: "Leaf",
-      title: "2030 Sustainability Goals Progress",
-      description:
-        "On track to meet the goal of halving CO2 impact by 2030. Circularity initiatives have successfully reclaimed 25% more tungsten carbide this year compared to last.",
-      badgeText: "Sustainability Target",
-      badgeVariant: "secondary",
-      source: "Annual Sustainability Report",
-      confidence: 95,
-      timestamp: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
       type: "manual",
     },
   ],
@@ -283,7 +246,7 @@ const insightsDatabase: Record<string, ApiInsight[]> = {
   ],
 }
 
-// Helper function to generate multiple AI strategic insights
+// Helper function to generate AI strategic insights
 async function generateStrategicInsights(
   tabName: string,
   promptTemplate: string,
@@ -294,7 +257,6 @@ async function generateStrategicInsights(
 ): Promise<ApiInsight[]> {
   const insights: ApiInsight[] = []
   const basePromptDetails = `For the 'detailedSources' field, list distinct categories of data sources. For each, provide 'name' (e.g., 'Global Economic Indicators') and 'contribution' (e.g., 'Offers macroeconomic context'). Aim for 2-3 source categories.`
-  const currentTimestamp = new Date().toISOString()
 
   for (let i = 0; i < count; i++) {
     try {
@@ -319,7 +281,7 @@ async function generateStrategicInsights(
         actionLink: aiData.actionableSuggestion
           ? { href: "#", text: "Explore Suggestion", iconName: "ArrowRight" }
           : undefined,
-        timestamp: new Date(Date.now() - i * 1000 * 60).toISOString(), // Stagger timestamps slightly
+        timestamp: new Date(Date.now() - i * 1000 * 60 * 5).toISOString(), // Stagger timestamps slightly more
         detailedSources: aiData.detailedSources,
         sourcesCheckedCount: aiData.detailedSources?.length || aiData.sourcesCheckedCount,
       })
@@ -335,7 +297,7 @@ async function generateStrategicInsights(
         confidence: "N/A",
         isAI: true,
         type: "ai",
-        timestamp: currentTimestamp,
+        timestamp: new Date(Date.now() - i * 1000 * 60 * 5).toISOString(),
       })
     }
   }
@@ -351,7 +313,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ insights: [] }, { status: 400 })
   }
 
-  const dynamicInsights: ApiInsight[] = [...insightsDatabase[tab]] // Start with manual insights
+  const dynamicInsights: ApiInsight[] = [...insightsDatabase[tab]]
 
   const strategicInsightPrompts: Record<
     string,
@@ -359,51 +321,51 @@ export async function GET(request: NextRequest) {
   > = {
     overview: {
       prompt:
-        "You are a strategic analyst for Sandvik. Based on current global economic trends, recent Sandvik performance, and geopolitical factors, provide one highly relevant strategic insight for Sandvik's executive team.",
+        "You are a strategic analyst for Sandvik. Based on current global economic trends, recent Sandvik performance, and geopolitical factors, provide a highly relevant strategic insight for Sandvik's executive team.",
       icon: "Brain",
       badgeClass: "bg-sky-500 text-white",
       sourceUnit: "AI Strategic Analysis Unit",
     },
     financials: {
       prompt:
-        "You are a financial analyst for Sandvik. Based on Sandvik's latest financial reports (e.g., Q3 performance with Net Sales SEK 95.2B, EBITA SEK 18.5B) and current market conditions, provide one key financial insight or trend.",
+        "You are a financial analyst for Sandvik. Based on Sandvik's latest financial reports (e.g., Q3 performance with Net Sales SEK 95.2B, EBITA SEK 18.5B) and current market conditions, provide a key financial insight or trend.",
       icon: "Brain",
       badgeClass: "bg-emerald-500 text-white",
       sourceUnit: "AI Financial Analysis Engine",
     },
     "strategic-direction": {
       prompt:
-        "You are a chief strategy officer for Sandvik. Analyze Sandvik's strategic direction, focusing on sustainable growth, innovation, and market leadership. Provide one key insight regarding a potential strategic pivot, a new growth vector, or an emerging competitive threat.",
+        "You are a chief strategy officer for Sandvik. Analyze Sandvik's strategic direction, focusing on sustainable growth, innovation, and market leadership. Provide a key insight regarding a potential strategic pivot, a new growth vector, or an emerging competitive threat.",
       icon: "Rocket",
       badgeClass: "bg-indigo-500 text-white",
       sourceUnit: "AI Strategic Foresight Unit",
     },
     "challenges-risks": {
       prompt:
-        "You are a risk and resilience analyst for Sandvik. Considering Sandvik's exposure to macroeconomic headwinds, geopolitical instability, and supply chain vulnerabilities, provide one key insight. Focus on proactive mitigation, resilience building, or identifying strategic opportunities arising from these challenges.",
+        "You are a risk and resilience analyst for Sandvik. Considering Sandvik's exposure to macroeconomic headwinds, geopolitical instability, and supply chain vulnerabilities, provide a key insight. Focus on proactive mitigation, resilience building, or identifying strategic opportunities arising from these challenges.",
       icon: "ShieldQuestion",
       badgeClass: "bg-amber-500 text-white",
       sourceUnit: "AI Risk & Resilience Advisor",
     },
     materials: {
       prompt:
-        "You are a supply chain risk analyst for Sandvik, focusing on critical materials like Tungsten, Cobalt, and Specialty Steel. Analyze commodity market trends and geopolitical risks to provide one actionable insight for optimizing sourcing or mitigating risk.",
+        "You are a supply chain risk analyst for Sandvik, focusing on critical materials like Tungsten, Cobalt, and Specialty Steel. Analyze commodity market trends and geopolitical risks to provide an actionable insight for optimizing sourcing or mitigating risk.",
       icon: "Lightbulb",
       badgeClass: "bg-purple-500 text-white",
       sourceUnit: "AI Materials Intelligence Platform",
     },
     manufacturing: {
       prompt:
-        "You are a manufacturing operations analyst for Sandvik. Analyze Sandvik's global manufacturing footprint (e.g., Gimo, Mebane) and regionalization strategy. Provide one insight on efficiency, bottlenecks, or new technology.",
+        "You are a manufacturing operations analyst for Sandvik. Analyze Sandvik's global manufacturing footprint (e.g., Gimo, Mebane) and regionalization strategy. Provide an insight on efficiency, bottlenecks, or new technology.",
       icon: "Factory",
       badgeClass: "bg-green-500 text-white",
       sourceUnit: "AI Manufacturing Intelligence",
     },
     logistics: {
       prompt:
-        "You are a logistics and trade compliance expert for Sandvik. Given challenges like Red Sea disruptions and tariffs, provide one insight to optimize logistics (e.g., route, modal shift, warehousing).",
+        "You are a logistics and trade compliance expert for Sandvik. Given challenges like Red Sea disruptions and tariffs, provide an insight to optimize logistics (e.g., route, modal shift, warehousing).",
       icon: "Truck",
-      badgeClass: "bg-blue-500 text-white", // Changed from bg-sky-500 to bg-blue-500 for consistency
+      badgeClass: "bg-blue-500 text-white",
       sourceUnit: "AI Logistics Analytics",
     },
   }
@@ -413,24 +375,27 @@ export async function GET(request: NextRequest) {
     const generatedStrategicInsights = await generateStrategicInsights(
       tab,
       config.prompt,
-      3,
+      2,
       config.icon,
       config.badgeClass,
       config.sourceUnit,
-    )
+    ) // Generate 2 strategic insights
     dynamicInsights.push(...generatedStrategicInsights)
   }
 
-  // AI-generated News Insights (relevant to the current tab)
+  // Re-enabled AI-generated News Insights
   try {
-    const newsPrompt = `You are an AI news summarizer. Provide 2-4 recent (within the last 3 months from ${new Date().toLocaleDateString()}) news items relevant to Sandvik's operations or market context concerning '${tab}'. Focus on factual summaries. For each news item, provide a title, a brief summary, a plausible source name, and an estimated published date in ISO 8601 format. Ensure dates are distinct and recent.`
+    const threeMonthsAgo = new Date()
+    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3)
+    const newsPrompt = `You are an AI news summarizer. Provide 2-4 recent news items (published between ${threeMonthsAgo.toISOString().split("T")[0]} and ${new Date().toISOString().split("T")[0]}) highly relevant to Sandvik's operations or market context concerning '${tab}'. Focus on factual summaries. For each news item, provide a title, a brief summary, a plausible source name, an estimated published date in ISO 8601 format (ensure it's a valid datetime string), a relevance score (0-100), and 2-3 keywords. Ensure dates are distinct and recent.`
+
     const { object: aiNewsFeed } = await generateObject({
       model: openai("gpt-4o"),
       schema: AiGeneratedNewsFeedSchema,
       prompt: newsPrompt,
     })
 
-    aiNewsFeed.newsItems.forEach((newsItem, index) => {
+    aiNewsFeed.newsItems.forEach((newsItem) => {
       dynamicInsights.push({
         iconName: "Newspaper",
         title: newsItem.title,
@@ -438,12 +403,10 @@ export async function GET(request: NextRequest) {
         badgeText: "Recent News",
         badgeVariant: "outline",
         source: newsItem.sourceName,
-        confidence: "N/A",
+        confidence: `Relevance: ${newsItem.relevanceScore}%`,
         isAI: true,
         type: "news",
-        timestamp: newsItem.publishedDate,
-        // Stagger timestamps slightly if AI provides same for multiple items, or ensure prompt asks for distinct dates
-        // timestamp: new Date(new Date(newsItem.publishedDate).getTime() - index * 1000).toISOString(),
+        timestamp: newsItem.publishedDate, // This is already an ISO string
         detailedSources: [{ name: newsItem.sourceName, contribution: "Provides recent news updates." }],
         sourcesCheckedCount: 1,
       })
@@ -453,7 +416,7 @@ export async function GET(request: NextRequest) {
     dynamicInsights.push({
       iconName: "AlertTriangle",
       title: "AI News Generation Failed",
-      description: `Could not generate AI-powered news updates for ${tab} at this time.`,
+      description: `Could not generate AI-powered news updates for ${tab} at this time. Error: ${error instanceof Error ? error.message : String(error)}`,
       badgeText: "Error",
       badgeVariant: "destructive",
       source: "System AI News Module",
@@ -464,14 +427,12 @@ export async function GET(request: NextRequest) {
     })
   }
 
-  // Sort all insights by timestamp descending before sending to client
-  // This ensures a consistent order, especially for the "All" view.
   dynamicInsights.sort((a, b) => {
     if (a.timestamp && b.timestamp) {
       return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
     }
-    if (a.timestamp) return -1 // a comes first if b has no timestamp
-    if (b.timestamp) return 1 // b comes first if a has no timestamp
+    if (a.timestamp) return -1
+    if (b.timestamp) return 1
     return 0
   })
 

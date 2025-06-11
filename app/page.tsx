@@ -1,6 +1,7 @@
 "use client"
 
 import { cn } from "@/lib/utils"
+
 import type React from "react"
 import { useState, useEffect, Suspense } from "react"
 import Image from "next/image"
@@ -9,7 +10,6 @@ import {
   Building2,
   Globe,
   Truck,
-  KeyIcon as CriticalMaterialsIcon,
   Play,
   LogOut,
   User,
@@ -22,6 +22,7 @@ import {
   Loader2,
   Rocket,
   ShieldAlert,
+  KeyIcon as CriticalMaterialsIcon,
 } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import {
@@ -123,19 +124,26 @@ export default function StrategicCockpitPage() {
   const [activeView, setActiveView] = useState("overview")
   const [expandedMainTab, setExpandedMainTab] = useState<string | null>("overview")
   const [secondaryHeaderText, setSecondaryHeaderText] = useState("")
+  const [contextualInsightsPanelTitle, setContextualInsightsPanelTitle] = useState("Insights for Overview")
 
   useEffect(() => {
     let headerText = "Sandvik Group Supply Chain Data"
+    let panelTitleText = "Insights for Overview"
+
     const parentItem = navItems.find((item) => item.subItems?.some((sub) => sub.id === activeView))
-    const currentItemDetails =
+    const currentItem =
       parentItem?.subItems?.find((sub) => sub.id === activeView) || navItems.find((item) => item.id === activeView)
 
-    if (parentItem && currentItemDetails && parentItem.id !== currentItemDetails.id) {
-      headerText = `${parentItem.label} > ${currentItemDetails.label} View - Sandvik Group Supply Chain Data`
-    } else if (currentItemDetails) {
-      headerText = `${currentItemDetails.label} View - Sandvik Group Supply Chain Data`
+    if (currentItem) {
+      panelTitleText = `Insights for ${currentItem.label}`
+      if (parentItem && parentItem.id !== currentItem.id) {
+        headerText = `${parentItem.label} > ${currentItem.label} View - Sandvik Group Supply Chain Data`
+      } else {
+        headerText = `${currentItem.label} View - Sandvik Group Supply Chain Data`
+      }
     }
     setSecondaryHeaderText(headerText)
+    setContextualInsightsPanelTitle(panelTitleText)
   }, [activeView])
 
   const renderContent = () => {
@@ -148,7 +156,7 @@ export default function StrategicCockpitPage() {
             fallback={
               <div className="flex items-center justify-center min-h-[400px]">
                 <Loader2 className="h-8 w-8 animate-spin text-brand-accent" />
-                <p className="ml-2 text-lg text-slate-500">Loading Financials Component...</p>
+                <p className="ml-2 text-lg text-slate-500">Loading Financials...</p>
               </div>
             }
           >
@@ -161,7 +169,7 @@ export default function StrategicCockpitPage() {
             fallback={
               <div className="flex items-center justify-center min-h-[400px]">
                 <Loader2 className="h-8 w-8 animate-spin text-brand-accent" />
-                <p className="ml-2 text-lg text-slate-500">Loading Strategic Direction Component...</p>
+                <p className="ml-2 text-lg text-slate-500">Loading Strategic Direction...</p>
               </div>
             }
           >
@@ -174,7 +182,7 @@ export default function StrategicCockpitPage() {
             fallback={
               <div className="flex items-center justify-center min-h-[400px]">
                 <Loader2 className="h-8 w-8 animate-spin text-brand-accent" />
-                <p className="ml-2 text-lg text-slate-500">Loading Challenges & Risks Component...</p>
+                <p className="ml-2 text-lg text-slate-500">Loading Challenges & Risks...</p>
               </div>
             }
           >
@@ -199,13 +207,10 @@ export default function StrategicCockpitPage() {
     determinedInsightsTabForPanel = activeView
   } else {
     const parentItem = navItems.find((item) => item.subItems?.some((sub) => sub.id === activeView))
-    if (parentItem && VALID_API_INSIGHT_TABS.includes(parentItem.id)) {
-      determinedInsightsTabForPanel = parentItem.id
-    } else {
-      determinedInsightsTabForPanel = "overview"
-    }
+    determinedInsightsTabForPanel =
+      parentItem && VALID_API_INSIGHT_TABS.includes(parentItem.id) ? parentItem.id : "overview"
   }
-  const insightsTab = determinedInsightsTabForPanel
+  const insightsTabKey = determinedInsightsTabForPanel
 
   return (
     <AuthGuard>
@@ -323,10 +328,7 @@ export default function StrategicCockpitPage() {
           <div className="flex-1 flex">
             <aside
               className="w-64 bg-brand-dark text-slate-200 flex flex-col justify-between sticky z-30"
-              style={{
-                top: `${TOTAL_HEADER_HEIGHT_PX}px`,
-                height: `calc(100vh - ${TOTAL_HEADER_HEIGHT_PX}px)`,
-              }}
+              style={{ top: `${TOTAL_HEADER_HEIGHT_PX}px`, height: `calc(100vh - ${TOTAL_HEADER_HEIGHT_PX}px)` }}
             >
               <div className="flex-grow px-4 pt-4">
                 <TooltipProvider delayDuration={0}>
@@ -336,7 +338,6 @@ export default function StrategicCockpitPage() {
                         item.id === activeView ||
                         (item.subItems?.some((sub) => sub.id === activeView) && item.id === expandedMainTab)
                       const isExpanded = expandedMainTab === item.id
-
                       return (
                         <div key={item.id}>
                           <Tooltip>
@@ -347,9 +348,7 @@ export default function StrategicCockpitPage() {
                                   setActiveView(item.id)
                                   setExpandedMainTab(item.id === expandedMainTab && item.subItems ? null : item.id)
                                 }}
-                                className={`w-full justify-start items-center space-x-3 py-2.5 rounded-lg transition-all duration-200 ease-in-out
-                                ${isMainActive && !item.subItems?.some((sub) => sub.id === activeView) ? "bg-brand-accent text-white font-semibold" : "text-slate-300 hover:bg-brand-dark-secondary hover:text-white"}
-                              `}
+                                className={`w-full justify-start items-center space-x-3 py-2.5 rounded-lg transition-all duration-200 ease-in-out ${isMainActive && !item.subItems?.some((sub) => sub.id === activeView) ? "bg-brand-accent text-white font-semibold" : "text-slate-300 hover:bg-brand-dark-secondary hover:text-white"}`}
                               >
                                 <item.icon className="h-5 w-5 flex-shrink-0" />
                                 <span className="text-sm flex-1 text-left">{item.label}</span>
@@ -375,9 +374,7 @@ export default function StrategicCockpitPage() {
                                       <Button
                                         variant="ghost"
                                         onClick={() => setActiveView(subItem.id)}
-                                        className={`w-full justify-start items-center space-x-3 py-2 rounded-lg transition-all duration-200 ease-in-out
-                                        ${isSubActive ? "bg-brand-accent text-white font-semibold" : "text-slate-400 hover:bg-brand-dark-secondary hover:text-slate-200"}
-                                      `}
+                                        className={`w-full justify-start items-center space-x-3 py-2 rounded-lg transition-all duration-200 ease-in-out ${isSubActive ? "bg-brand-accent text-white font-semibold" : "text-slate-400 hover:bg-brand-dark-secondary hover:text-slate-200"}`}
                                       >
                                         <subItem.icon className="h-4 w-4 flex-shrink-0 ml-1" />
                                         <span className="text-xs">{subItem.label}</span>
@@ -404,12 +401,13 @@ export default function StrategicCockpitPage() {
                 "bg-white border-l border-slate-200 flex-shrink-0 sticky z-20 overflow-y-auto",
                 RIGHT_PANEL_WIDTH_CLASS,
               )}
-              style={{
-                top: `${TOTAL_HEADER_HEIGHT_PX}px`,
-                height: `calc(100vh - ${TOTAL_HEADER_HEIGHT_PX}px)`,
-              }}
+              style={{ top: `${TOTAL_HEADER_HEIGHT_PX}px`, height: `calc(100vh - ${TOTAL_HEADER_HEIGHT_PX}px)` }}
             >
-              <ContextualInsightsPanel key={insightsTab} activeTab={insightsTab} />
+              <ContextualInsightsPanel
+                key={insightsTabKey}
+                activeTab={insightsTabKey}
+                panelTitle={contextualInsightsPanelTitle}
+              />
             </aside>
           </div>
         </div>
