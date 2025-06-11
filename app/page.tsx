@@ -66,14 +66,13 @@ export default function StrategicCockpitPage() {
               <div className="flex items-center">
                 <Image
                   src="/scc-logo-white.png"
-                  alt="Supply Chain Companions Logo"
-                  width={40}
-                  height={40}
+                  alt="Strategic Cockpit Logo"
+                  width={50}
+                  height={50}
                   className="mr-3"
                   priority
                 />
                 <div>
-                  <h1 className="text-xl font-semibold">Supply Chain Companions</h1>
                   <h2 className="text-2xl font-bold">Strategic Cockpit</h2>
                 </div>
               </div>
@@ -101,14 +100,14 @@ export default function StrategicCockpitPage() {
                             variant="ghost"
                             onClick={() => setActiveTab(item.id)}
                             className={`w-full justify-start items-center space-x-3 py-2.5 rounded-lg transition-all duration-200 ease-in-out
-                            ${
-                              isActive
-                                ? isSimulation
-                                  ? "bg-green-500/20 text-green-300 font-semibold"
-                                  : "bg-slate-700 text-white font-semibold"
-                                : "text-slate-300 hover:bg-slate-700 hover:text-white"
-                            }
-                          `}
+                          ${
+                            isActive
+                              ? isSimulation
+                                ? "bg-green-500/20 text-green-300 font-semibold"
+                                : "bg-slate-700 text-white font-semibold"
+                              : "text-slate-300 hover:bg-slate-700 hover:text-white"
+                          }
+                        `}
                           >
                             <item.icon className="h-5 w-5" />
                             <span className="text-sm">{item.label}</span>
