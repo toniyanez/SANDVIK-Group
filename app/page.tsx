@@ -63,18 +63,16 @@ export default function StrategicCockpitPage() {
           {/* This div centers the header content and provides consistent horizontal padding */}
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className={`flex items-center justify-between h-[${HEADER_HEIGHT_PX}px]`}>
-              <div className="flex items-center">
-                <Image
-                  src="/scc-logo-white.png"
-                  alt="Supply Chain Companions Logo"
-                  width={218}
-                  height={48}
-                  className="mr-4"
-                  priority
-                />
-                <div>
-                  <h2 className="text-2xl font-bold">Strategic Cockpit</h2>
-                </div>
+              <Image
+                src="/scc-logo-white.png"
+                alt="Supply Chain Companions Logo"
+                width={218}
+                height={48}
+                className="mr-4"
+                priority
+              />
+              <div className="flex-1 text-center">
+                <h2 className="text-2xl font-bold">Strategic Cockpit</h2>
               </div>
               <p className="text-sm text-slate-300 hidden md:block">Sandvik Group Supply Chain Cockpit</p>
             </div>
