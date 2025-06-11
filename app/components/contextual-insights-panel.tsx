@@ -48,7 +48,7 @@ interface ApiInsight {
     iconName: string
   }
   timestamp?: string
-  sourcesCheckedCount?: number // New field for number of sources checked
+  sourcesCheckedCount?: number
 }
 
 interface ContextualInsightsPanelProps {
@@ -223,12 +223,12 @@ const InsightCardSkeleton: React.FC = () => (
       <Skeleton className="h-4 w-5/6 mb-3" />
       <div className="space-y-1.5 pt-3 border-t border-slate-100">
         <div className="flex items-center justify-between">
-          <Skeleton className="h-3 w-[45%]" /> {/* Adjusted width for source */}
-          <Skeleton className="h-3 w-[20%]" /> {/* Placeholder for timestamp */}
+          <Skeleton className="h-3 w-[45%]" />
+          <Skeleton className="h-3 w-[20%]" />
         </div>
         <div className="flex items-center justify-between">
-          <Skeleton className="h-3 w-[30%]" /> {/* Placeholder for confidence */}
-          <Skeleton className="h-3 w-[35%]" /> {/* Placeholder for sources checked */}
+          <Skeleton className="h-3 w-[30%]" />
+          <Skeleton className="h-3 w-[35%]" />
         </div>
       </div>
     </CardContent>
@@ -244,7 +244,7 @@ export default function ContextualInsightsPanel({ activeTab }: ContextualInsight
     const fetchInsights = async () => {
       setIsLoading(true)
       setError(null)
-      setInsights([]) // Clear previous insights
+      setInsights([])
       try {
         const response = await fetch(`/api/contextual-insights?tab=${activeTab}`)
         if (!response.ok) {
@@ -254,15 +254,7 @@ export default function ContextualInsightsPanel({ activeTab }: ContextualInsight
           )
         }
         const data = await response.json()
-        // Example: Add dummy timestamp and sourcesCheckedCount if not provided by API
-        const processedInsights = (data.insights || []).map((insight: ApiInsight) => ({
-          ...insight,
-          timestamp: insight.timestamp || new Date().toISOString(), // Default to now if not provided
-          sourcesCheckedCount: insight.isAI
-            ? insight.sourcesCheckedCount || Math.floor(Math.random() * 5) + 1
-            : undefined, // Dummy data for AI insights
-        }))
-        setInsights(processedInsights)
+        setInsights(data.insights || []) // Use data directly from API
       } catch (err) {
         setError(err instanceof Error ? err.message : "An unknown error occurred while fetching insights.")
         setInsights([])
@@ -296,7 +288,6 @@ export default function ContextualInsightsPanel({ activeTab }: ContextualInsight
           variant="outline"
           size="sm"
           onClick={() => {
-            /* Re-trigger fetch */
             const fetchAgain = async () => {
               setIsLoading(true)
               setError(null)
@@ -305,14 +296,7 @@ export default function ContextualInsightsPanel({ activeTab }: ContextualInsight
                 const response = await fetch(`/api/contextual-insights?tab=${activeTab}`)
                 if (!response.ok) throw new Error(`Failed to fetch insights: ${response.statusText}`)
                 const data = await response.json()
-                const processedInsights = (data.insights || []).map((insight: ApiInsight) => ({
-                  ...insight,
-                  timestamp: insight.timestamp || new Date().toISOString(),
-                  sourcesCheckedCount: insight.isAI
-                    ? insight.sourcesCheckedCount || Math.floor(Math.random() * 5) + 1
-                    : undefined,
-                }))
-                setInsights(processedInsights)
+                setInsights(data.insights || [])
               } catch (err) {
                 setError(err instanceof Error ? err.message : "An unknown error occurred")
                 setInsights([])
@@ -330,12 +314,12 @@ export default function ContextualInsightsPanel({ activeTab }: ContextualInsight
     )
   } else if (insights.length > 0) {
     content = insights.map((insight, index) => {
-      const IconComponent = iconMap[insight.iconName] || Info // Fallback to Info icon
+      const IconComponent = iconMap[insight.iconName] || Info
       const ActionIconComponent = insight.actionLink ? iconMap[insight.actionLink.iconName] || LinkIcon : undefined
 
       return (
         <InsightCard
-          key={`${insight.title}-${index}`} // Using title and index for key
+          key={`${insight.title}-${index}`}
           icon={IconComponent}
           title={insight.title}
           description={insight.description}

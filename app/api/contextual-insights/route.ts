@@ -57,7 +57,7 @@ type ApiInsight = {
     text: string
     iconName: string
   }
-  dataTimestamp?: string // ISO 8601 string
+  timestamp?: string // ISO 8601 string
   sourcesCheckedCount?: number
 }
 
@@ -73,7 +73,7 @@ const insightsDatabase: Record<string, ApiInsight[]> = {
       badgeVariant: "secondary",
       source: "Internal Sales Data, MarketWatch Q3 Report",
       confidence: 90,
-      dataTimestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days ago
+      timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days ago
     },
     {
       iconName: "AlertTriangle",
@@ -85,7 +85,7 @@ const insightsDatabase: Record<string, ApiInsight[]> = {
       source: "Global Logistics Monitoring Platform",
       confidence: 95,
       actionLink: { href: "#", text: "View Mitigation Plan", iconName: "FileText" },
-      dataTimestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
+      timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
     },
   ],
   manufacturing: [
@@ -99,7 +99,7 @@ const insightsDatabase: Record<string, ApiInsight[]> = {
       badgeClassName: "bg-green-500 text-white",
       source: "Gimo Plant SCADA System & MES",
       confidence: 98,
-      dataTimestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), // 5 days ago
+      timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), // 5 days ago
     },
     {
       iconName: "Settings",
@@ -109,7 +109,7 @@ const insightsDatabase: Record<string, ApiInsight[]> = {
       badgeText: "Operational Note",
       source: "Project Management Office Updates",
       confidence: "Confirmed",
-      dataTimestamp: new Date().toISOString(), // Today
+      timestamp: new Date().toISOString(), // Today
     },
   ],
   materials: [
@@ -122,7 +122,7 @@ const insightsDatabase: Record<string, ApiInsight[]> = {
       badgeVariant: "destructive",
       source: "LME, S&P Global Commodity Insights",
       confidence: 88,
-      dataTimestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days ago
+      timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days ago
     },
   ],
   logistics: [
@@ -136,7 +136,7 @@ const insightsDatabase: Record<string, ApiInsight[]> = {
       badgeClassName: "bg-sky-500 text-white",
       source: "Port Authority Data, Freight Forwarder Intel",
       confidence: 85,
-      dataTimestamp: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(), // 12 hours ago
+      timestamp: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(), // 12 hours ago
     },
     {
       iconName: "TrendingUp",
@@ -146,7 +146,7 @@ const insightsDatabase: Record<string, ApiInsight[]> = {
       badgeText: "Capacity Update",
       source: "IATA, Freightos Air Index",
       confidence: 80,
-      dataTimestamp: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString(), // 6 days ago
+      timestamp: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString(), // 6 days ago
     },
   ],
   simulations: [
@@ -158,7 +158,7 @@ const insightsDatabase: Record<string, ApiInsight[]> = {
       badgeText: "Simulation Complete",
       source: "Supply Chain Modeler Pro v2.1",
       confidence: "Modelled (92% fit)",
-      dataTimestamp: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(), // 10 days ago
+      timestamp: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(), // 10 days ago
     },
     {
       iconName: "Lightbulb",
@@ -169,7 +169,7 @@ const insightsDatabase: Record<string, ApiInsight[]> = {
       source: "Analytics & Foresight Team",
       confidence: "Ready",
       actionLink: { href: "#", text: "Configure Scenario", iconName: "Play" },
-      dataTimestamp: new Date().toISOString(), // Today
+      timestamp: new Date().toISOString(), // Today
     },
   ],
 }
@@ -209,7 +209,7 @@ export async function GET(request: NextRequest) {
         actionLink: aiData.actionableSuggestion
           ? { href: "#", text: "Explore Suggestion", iconName: "ArrowRight" }
           : undefined,
-        dataTimestamp: currentTimestamp,
+        timestamp: currentTimestamp,
         sourcesCheckedCount: aiData.sourcesCheckedCount,
       })
     } catch (error) {
@@ -223,7 +223,7 @@ export async function GET(request: NextRequest) {
         source: "System AI Module",
         confidence: "N/A",
         isAI: true,
-        dataTimestamp: currentTimestamp,
+        timestamp: currentTimestamp,
       })
     }
   }
@@ -252,7 +252,7 @@ export async function GET(request: NextRequest) {
         actionLink: aiMaterialData.actionableSuggestion
           ? { href: "#", text: "Review Sourcing Options", iconName: "ListChecks" }
           : undefined,
-        dataTimestamp: currentTimestamp,
+        timestamp: currentTimestamp,
         sourcesCheckedCount: aiMaterialData.sourcesCheckedCount,
       })
     } catch (error) {
@@ -266,7 +266,7 @@ export async function GET(request: NextRequest) {
         source: "System AI Module",
         confidence: "N/A",
         isAI: true,
-        dataTimestamp: currentTimestamp,
+        timestamp: currentTimestamp,
       })
     }
   }
@@ -295,7 +295,7 @@ export async function GET(request: NextRequest) {
         actionLink: aiData.actionableSuggestion
           ? { href: "#", text: "Review Operations Data", iconName: "BarChart3" }
           : undefined,
-        dataTimestamp: currentTimestamp,
+        timestamp: currentTimestamp,
         sourcesCheckedCount: aiData.sourcesCheckedCount,
       })
     } catch (error) {
@@ -309,7 +309,7 @@ export async function GET(request: NextRequest) {
         source: "System AI Module",
         confidence: "N/A",
         isAI: true,
-        dataTimestamp: currentTimestamp,
+        timestamp: currentTimestamp,
       })
     }
   }
@@ -338,7 +338,7 @@ export async function GET(request: NextRequest) {
         actionLink: aiData.actionableSuggestion
           ? { href: "#", text: "Analyze Logistics Data", iconName: "TrendingUp" }
           : undefined,
-        dataTimestamp: currentTimestamp,
+        timestamp: currentTimestamp,
         sourcesCheckedCount: aiData.sourcesCheckedCount,
       })
     } catch (error) {
@@ -352,7 +352,7 @@ export async function GET(request: NextRequest) {
         source: "System AI Module",
         confidence: "N/A",
         isAI: true,
-        dataTimestamp: currentTimestamp,
+        timestamp: currentTimestamp,
       })
     }
   }
