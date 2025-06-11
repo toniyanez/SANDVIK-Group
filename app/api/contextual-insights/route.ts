@@ -3,6 +3,19 @@ import { openai } from "@ai-sdk/openai"
 import { generateObject } from "ai"
 import { z } from "zod"
 
+const DetailedSourceSchema = z.object({
+  name: z
+    .string()
+    .describe(
+      "The name or category of the data source (e.g., 'Economic News Aggregators', 'Internal Sales Platform', 'Commodity Price Index').",
+    ),
+  contribution: z
+    .string()
+    .describe(
+      "A brief description of what kind of information or perspective this type of source contributes to the insight.",
+    ),
+})
+
 // Zod schema for AI-generated insights
 const AiGeneratedInsightSchema = z.object({
   title: z.string().describe("A concise, compelling title for the insight (max 10 words)."),
@@ -33,15 +46,23 @@ const AiGeneratedInsightSchema = z.object({
     .string()
     .optional()
     .describe("A brief, concrete actionable suggestion related to the insight, if applicable (max 15 words)."),
-  sourcesCheckedCount: z
+  sourcesCheckedCount: z // This will be implicitly derived from the length of detailedSources array
     .number()
     .optional()
     .describe(
       "Estimate the number of distinct categories of data sources (e.g., market reports, internal data, news articles) typically synthesized to generate this insight.",
     ),
+  detailedSources: z
+    .array(DetailedSourceSchema)
+    .optional()
+    .describe(
+      "A list of the distinct categories of data sources synthesized to generate this insight, along with their contributions.",
+    ),
 })
 
 // Type for API insights
+type DetailedSource = z.infer<typeof DetailedSourceSchema>
+
 type ApiInsight = {
   iconName: string
   title: string
@@ -49,7 +70,7 @@ type ApiInsight = {
   badgeText: string
   badgeVariant?: "default" | "secondary" | "destructive" | "outline"
   badgeClassName?: string
-  source: string
+  source: string // General source string (e.g., "AI Strategic Analysis Unit")
   confidence: number | string
   isAI?: boolean
   actionLink?: {
@@ -58,10 +79,11 @@ type ApiInsight = {
     iconName: string
   }
   timestamp?: string // ISO 8601 string
-  sourcesCheckedCount?: number
+  sourcesCheckedCount?: number // Will be derived from detailedSources.length if available
+  detailedSources?: DetailedSource[]
 }
 
-// Predefined insights database
+// Predefined insights database (simplified for brevity, add detailedSources if needed for non-AI)
 const insightsDatabase: Record<string, ApiInsight[]> = {
   overview: [
     {
@@ -73,7 +95,15 @@ const insightsDatabase: Record<string, ApiInsight[]> = {
       badgeVariant: "secondary",
       source: "Internal Sales Data, MarketWatch Q3 Report",
       confidence: 90,
-      timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days ago
+      timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+      detailedSources: [
+        { name: "Internal Sales Data", contribution: "Provides YoY growth figures and regional performance for SMRS." },
+        {
+          name: "MarketWatch Q3 Report",
+          contribution: "Corroborates growth trends and identifies drivers like infrastructure projects.",
+        },
+      ],
+      sourcesCheckedCount: 2,
     },
     {
       iconName: "AlertTriangle",
@@ -185,13 +215,15 @@ export async function GET(request: NextRequest) {
   const dynamicInsights: ApiInsight[] = [...insightsDatabase[tab]]
   const currentTimestamp = new Date().toISOString()
 
+  const basePromptDetails = `For the 'detailedSources' field, list the distinct categories of data sources typically synthesized. For each source, provide its 'name' (e.g., 'Global Economic Indicators', 'Competitor Analysis Reports') and its 'contribution' (e.g., 'Offers macroeconomic context', 'Highlights competitor strategies and market positioning'). Aim for 2-5 source categories.`
+
   // AI-generated insight for 'overview' tab
   if (tab === "overview") {
     try {
       const { object: aiData } = await generateObject({
         model: openai("gpt-4o"),
         schema: AiGeneratedInsightSchema,
-        prompt: `You are a strategic analyst for Sandvik. Based on current global economic trends (e.g., inflation, interest rates, energy costs), recent Sandvik performance (SMRS growth in APAC, SMMS headwinds in Europe), and geopolitical factors (e.g., Red Sea disruptions, regional conflicts), provide one highly relevant and actionable strategic insight for Sandvik's executive team for the next quarter. The insight should be concise and impactful. Additionally, please state the number of distinct categories of information or types of data sources (e.g., financial reports, industry news, internal metrics, geopolitical analysis) that would typically be synthesized to produce an insight like this. Assign this to 'sourcesCheckedCount'.`,
+        prompt: `You are a strategic analyst for Sandvik. Based on current global economic trends, recent Sandvik performance, and geopolitical factors, provide one highly relevant strategic insight for Sandvik's executive team. ${basePromptDetails}`,
       })
 
       dynamicInsights.push({
@@ -210,7 +242,8 @@ export async function GET(request: NextRequest) {
           ? { href: "#", text: "Explore Suggestion", iconName: "ArrowRight" }
           : undefined,
         timestamp: currentTimestamp,
-        sourcesCheckedCount: aiData.sourcesCheckedCount,
+        detailedSources: aiData.detailedSources,
+        sourcesCheckedCount: aiData.detailedSources?.length || aiData.sourcesCheckedCount,
       })
     } catch (error) {
       console.error("AI insight generation failed for 'overview' tab:", error)
@@ -234,7 +267,7 @@ export async function GET(request: NextRequest) {
       const { object: aiMaterialData } = await generateObject({
         model: openai("gpt-4o"),
         schema: AiGeneratedInsightSchema,
-        prompt: `You are a supply chain risk analyst for Sandvik. Considering Sandvik's critical materials: Tungsten (vertically integrated, WBH Austria), Cobalt (external sourcing, high risk from DRC), and Specialty Steel (external sourcing post-Alleima). Analyze recent commodity market trends (e.g., Cobalt price volatility, steel tariffs) and provide one specific, actionable insight for optimizing Sandvik's critical material sourcing strategy or mitigating risk in the next 6 months. Additionally, please state the number of distinct categories of information or types of data sources (e.g., commodity indices, supplier reports, geopolitical risk assessments) that would typically be synthesized to produce an insight like this. Assign this to 'sourcesCheckedCount'.`,
+        prompt: `You are a supply chain risk analyst for Sandvik, focusing on critical materials like Tungsten, Cobalt, and Specialty Steel. Analyze commodity market trends and geopolitical risks to provide one actionable insight for optimizing sourcing or mitigating risk. ${basePromptDetails}`,
       })
 
       dynamicInsights.push({
@@ -253,7 +286,8 @@ export async function GET(request: NextRequest) {
           ? { href: "#", text: "Review Sourcing Options", iconName: "ListChecks" }
           : undefined,
         timestamp: currentTimestamp,
-        sourcesCheckedCount: aiMaterialData.sourcesCheckedCount,
+        detailedSources: aiMaterialData.detailedSources,
+        sourcesCheckedCount: aiMaterialData.detailedSources?.length || aiMaterialData.sourcesCheckedCount,
       })
     } catch (error) {
       console.error("AI insight generation failed for 'materials' tab:", error)
@@ -277,9 +311,8 @@ export async function GET(request: NextRequest) {
       const { object: aiData } = await generateObject({
         model: openai("gpt-4o"),
         schema: AiGeneratedInsightSchema,
-        prompt: `You are a manufacturing operations analyst for Sandvik. Analyze Sandvik's global manufacturing footprint, which includes key sites like Gimo, Sweden (an Industry 4.0 Lighthouse) and Mebane, NC (a green factory). Consider the ongoing SMMS regionalization strategy. Provide one specific, actionable insight related to manufacturing efficiency, potential bottlenecks, or a new technological opportunity (e.g., additive manufacturing, predictive maintenance) for the next quarter. Additionally, please state the number of distinct categories of information or types of data sources (e.g., production data, maintenance logs, industry best practices, new technology reports) that would typically be synthesized to produce an insight like this. Assign this to 'sourcesCheckedCount'.`,
+        prompt: `You are a manufacturing operations analyst for Sandvik. Analyze Sandvik's global manufacturing footprint (e.g., Gimo, Mebane) and regionalization strategy. Provide one insight on efficiency, bottlenecks, or new technology. ${basePromptDetails}`,
       })
-
       dynamicInsights.push({
         iconName: "Factory",
         title: `AI: ${aiData.title}`,
@@ -296,7 +329,8 @@ export async function GET(request: NextRequest) {
           ? { href: "#", text: "Review Operations Data", iconName: "BarChart3" }
           : undefined,
         timestamp: currentTimestamp,
-        sourcesCheckedCount: aiData.sourcesCheckedCount,
+        detailedSources: aiData.detailedSources,
+        sourcesCheckedCount: aiData.detailedSources?.length || aiData.sourcesCheckedCount,
       })
     } catch (error) {
       console.error("AI insight generation failed for 'manufacturing' tab:", error)
@@ -320,9 +354,8 @@ export async function GET(request: NextRequest) {
       const { object: aiData } = await generateObject({
         model: openai("gpt-4o"),
         schema: AiGeneratedInsightSchema,
-        prompt: `You are a logistics and trade compliance expert for Sandvik. Given the current logistics challenges, including Red Sea shipping disruptions, US reciprocal tariffs on EU exports, and volatile fuel prices, provide one specific, actionable insight to optimize Sandvik's logistics network. This could involve route optimization, a strategic modal shift, or a warehousing strategy to mitigate risks and reduce costs in the next 6 months. Additionally, please state the number of distinct categories of information or types of data sources (e.g., shipping rates, customs data, fuel price trends, port congestion reports) that would typically be synthesized to produce an insight like this. Assign this to 'sourcesCheckedCount'.`,
+        prompt: `You are a logistics and trade compliance expert for Sandvik. Given challenges like Red Sea disruptions and tariffs, provide one insight to optimize logistics (e.g., route, modal shift, warehousing). ${basePromptDetails}`,
       })
-
       dynamicInsights.push({
         iconName: "Truck",
         title: `AI: ${aiData.title}`,
@@ -339,7 +372,8 @@ export async function GET(request: NextRequest) {
           ? { href: "#", text: "Analyze Logistics Data", iconName: "TrendingUp" }
           : undefined,
         timestamp: currentTimestamp,
-        sourcesCheckedCount: aiData.sourcesCheckedCount,
+        detailedSources: aiData.detailedSources,
+        sourcesCheckedCount: aiData.detailedSources?.length || aiData.sourcesCheckedCount,
       })
     } catch (error) {
       console.error("AI insight generation failed for 'logistics' tab:", error)

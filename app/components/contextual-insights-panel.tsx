@@ -8,6 +8,15 @@ import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog"
+import {
   Info,
   AlertTriangle,
   BarChart3,
@@ -28,9 +37,15 @@ import {
   Factory,
   CalendarDays,
   Layers,
+  BookOpen,
 } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
+interface DetailedSource {
+  name: string
+  contribution: string
+  link?: string // Optional link for future use
+}
 // Define the structure of an insight received from the API
 interface ApiInsight {
   iconName: string
@@ -49,6 +64,7 @@ interface ApiInsight {
   }
   timestamp?: string
   sourcesCheckedCount?: number
+  detailedSources?: DetailedSource[]
 }
 
 interface ContextualInsightsPanelProps {
@@ -77,6 +93,7 @@ const iconMap: Record<string, React.ElementType> = {
   Factory,
   CalendarDays,
   Layers,
+  BookOpen,
 }
 
 // Utility function to format "time ago" from timestamp
@@ -85,30 +102,15 @@ const formatTimeAgo = (timestamp: string): string => {
   const now = new Date()
   const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000)
 
-  if (diffInSeconds < 60) {
-    return "just now"
-  }
-
+  if (diffInSeconds < 60) return "just now"
   const diffInMinutes = Math.floor(diffInSeconds / 60)
-  if (diffInMinutes < 60) {
-    return `${diffInMinutes} minute${diffInMinutes > 1 ? "s" : ""} ago`
-  }
-
+  if (diffInMinutes < 60) return `${diffInMinutes} minute${diffInMinutes > 1 ? "s" : ""} ago`
   const diffInHours = Math.floor(diffInMinutes / 60)
-  if (diffInHours < 24) {
-    return `${diffInHours} hour${diffInHours > 1 ? "s" : ""} ago`
-  }
-
+  if (diffInHours < 24) return `${diffInHours} hour${diffInHours > 1 ? "s" : ""} ago`
   const diffInDays = Math.floor(diffInHours / 24)
-  if (diffInDays < 30) {
-    return `${diffInDays} day${diffInDays > 1 ? "s" : ""} ago`
-  }
-
+  if (diffInDays < 30) return `${diffInDays} day${diffInDays > 1 ? "s" : ""} ago`
   const diffInMonths = Math.floor(diffInDays / 30)
-  if (diffInMonths < 12) {
-    return `${diffInMonths} month${diffInMonths > 1 ? "s" : ""} ago`
-  }
-
+  if (diffInMonths < 12) return `${diffInMonths} month${diffInMonths > 1 ? "s" : ""} ago`
   const diffInYears = Math.floor(diffInMonths / 12)
   return `${diffInYears} year${diffInYears > 1 ? "s" : ""} ago`
 }
@@ -117,6 +119,7 @@ const InsightCard: React.FC<
   Omit<ApiInsight, "iconName" | "actionLink"> & {
     icon: React.ElementType
     actionLink?: ApiInsight["actionLink"] & { icon: React.ElementType }
+    onSourcesClick: () => void
   }
 > = ({
   icon: Icon,
@@ -131,6 +134,8 @@ const InsightCard: React.FC<
   actionLink,
   timestamp,
   sourcesCheckedCount,
+  detailedSources,
+  onSourcesClick,
 }) => (
   <Card className="mb-4 transition-all duration-300 hover:shadow-lg border border-slate-200 bg-white">
     <div className="flex flex-col space-y-1.5 p-6 pb-3">
@@ -184,12 +189,17 @@ const InsightCard: React.FC<
             <span>Confidence: {typeof confidence === "number" ? `${confidence}%` : confidence}</span>
           </div>
           {isAI && sourcesCheckedCount && sourcesCheckedCount > 0 && (
-            <div className="flex items-center">
-              <Layers className="w-3.5 h-3.5 mr-1.5 text-slate-400" />
+            <Button
+              variant="link"
+              size="sm"
+              className="text-xs p-0 h-auto text-slate-500 hover:text-brand-accent"
+              onClick={onSourcesClick}
+            >
+              <Layers className="w-3.5 h-3.5 mr-1.5" />
               <span>
                 {sourcesCheckedCount} source{sourcesCheckedCount > 1 ? "s" : ""} checked
               </span>
-            </div>
+            </Button>
           )}
         </div>
       </div>
@@ -209,6 +219,7 @@ const InsightCard: React.FC<
 
 const InsightCardSkeleton: React.FC = () => (
   <Card className="mb-4 border border-slate-200 bg-white">
+    {/* ... skeleton content remains largely the same ... */}
     <div className="flex flex-col space-y-1.5 p-6 pb-3">
       <div className="flex items-start justify-between">
         <div className="flex items-center">
@@ -239,6 +250,8 @@ export default function ContextualInsightsPanel({ activeTab }: ContextualInsight
   const [insights, setInsights] = useState<ApiInsight[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [selectedInsightSources, setSelectedInsightSources] = useState<DetailedSource[] | undefined>(undefined)
+  const [isSourcesDialogOpen, setIsSourcesDialogOpen] = useState(false)
 
   useEffect(() => {
     const fetchInsights = async () => {
@@ -254,7 +267,7 @@ export default function ContextualInsightsPanel({ activeTab }: ContextualInsight
           )
         }
         const data = await response.json()
-        setInsights(data.insights || []) // Use data directly from API
+        setInsights(data.insights || [])
       } catch (err) {
         setError(err instanceof Error ? err.message : "An unknown error occurred while fetching insights.")
         setInsights([])
@@ -268,6 +281,13 @@ export default function ContextualInsightsPanel({ activeTab }: ContextualInsight
     }
   }, [activeTab])
 
+  const handleSourcesClick = (detailedSources?: DetailedSource[]) => {
+    if (detailedSources && detailedSources.length > 0) {
+      setSelectedInsightSources(detailedSources)
+      setIsSourcesDialogOpen(true)
+    }
+  }
+
   let content: React.ReactNode
 
   if (isLoading) {
@@ -279,6 +299,7 @@ export default function ContextualInsightsPanel({ activeTab }: ContextualInsight
       </>
     )
   } else if (error) {
+    // ... error handling ...
     content = (
       <div className="text-center text-red-500 py-10 flex flex-col items-center h-full justify-center">
         <AlertTriangle className="w-12 h-12 mx-auto mb-4 text-red-400" />
@@ -320,24 +341,17 @@ export default function ContextualInsightsPanel({ activeTab }: ContextualInsight
       return (
         <InsightCard
           key={`${insight.title}-${index}`}
+          {...insight} // Pass all insight props
           icon={IconComponent}
-          title={insight.title}
-          description={insight.description}
-          badgeText={insight.badgeText}
-          badgeVariant={insight.badgeVariant}
-          badgeClassName={insight.badgeClassName}
-          source={insight.source}
-          confidence={insight.confidence}
-          isAI={insight.isAI}
           actionLink={
             insight.actionLink && ActionIconComponent ? { ...insight.actionLink, icon: ActionIconComponent } : undefined
           }
-          timestamp={insight.timestamp}
-          sourcesCheckedCount={insight.sourcesCheckedCount}
+          onSourcesClick={() => handleSourcesClick(insight.detailedSources)}
         />
       )
     })
   } else {
+    // ... no insights message ...
     content = (
       <div className="text-center text-slate-500 py-16 flex flex-col items-center h-full justify-center">
         <Info className="w-12 h-12 mx-auto mb-4 text-slate-300" />
@@ -348,21 +362,55 @@ export default function ContextualInsightsPanel({ activeTab }: ContextualInsight
   }
 
   return (
-    <div className="h-full flex flex-col bg-slate-50">
-      <div className="p-4 border-b border-slate-200 bg-white">
-        <h3 className="text-lg font-semibold text-brand-dark flex items-center">
-          <Lightbulb className="w-5 h-5 mr-2.5 text-brand-accent" />
-          Contextual Insights
-        </h3>
-        <p className="text-xs text-slate-500 ml-[30px]">Relevant information based on your current view.</p>
+    <>
+      <div className="h-full flex flex-col bg-slate-50">
+        <div className="p-4 border-b border-slate-200 bg-white">
+          <h3 className="text-lg font-semibold text-brand-dark flex items-center">
+            <Lightbulb className="w-5 h-5 mr-2.5 text-brand-accent" />
+            Contextual Insights
+          </h3>
+          <p className="text-xs text-slate-500 ml-[30px]">Relevant information based on your current view.</p>
+        </div>
+        <ScrollArea className="flex-grow p-4">{content}</ScrollArea>
+        <div className="p-4 border-t border-slate-200 mt-auto bg-white">
+          <Button variant="outline" className="w-full text-slate-700 hover:bg-slate-100">
+            <Settings className="w-4 h-4 mr-2" />
+            Customize Insights Feed
+          </Button>
+        </div>
       </div>
-      <ScrollArea className="flex-grow p-4">{content}</ScrollArea>
-      <div className="p-4 border-t border-slate-200 mt-auto bg-white">
-        <Button variant="outline" className="w-full text-slate-700 hover:bg-slate-100">
-          <Settings className="w-4 h-4 mr-2" />
-          Customize Insights Feed
-        </Button>
-      </div>
-    </div>
+
+      <Dialog open={isSourcesDialogOpen} onOpenChange={setIsSourcesDialogOpen}>
+        <DialogContent className="sm:max-w-[525px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center">
+              <BookOpen className="w-5 h-5 mr-2 text-brand-accent" />
+              Detailed Sources
+            </DialogTitle>
+            <DialogDescription>
+              The AI insight was synthesized based on information from the following categories of sources:
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="max-h-[60vh] pr-2">
+            <div className="grid gap-4 py-4">
+              {selectedInsightSources?.map((src, idx) => (
+                <div key={idx} className="p-3 border rounded-md bg-slate-50">
+                  <h4 className="font-semibold text-sm text-brand-dark mb-1">{src.name}</h4>
+                  <p className="text-xs text-slate-600">{src.contribution}</p>
+                  {/* We can add src.link here in the future if available */}
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button type="button" variant="secondary">
+                Close
+              </Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
