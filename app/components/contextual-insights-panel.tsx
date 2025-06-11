@@ -18,10 +18,65 @@ import {
   ListChecks,
   Zap,
 } from "lucide-react"
+import { Truck, Play } from "lucide-react"
 
 interface ContextualInsightsPanelProps {
   activeTab: string
 }
+
+interface InsightCardProps {
+  icon: React.ElementType
+  title: string
+  description: string
+  badgeText: string
+  badgeVariant?: "default" | "secondary" | "destructive" | "outline"
+  badgeColor?: string
+}
+
+const InsightCard: React.FC<InsightCardProps> = ({
+  icon: Icon,
+  title,
+  description,
+  badgeText,
+  badgeVariant = "secondary",
+  badgeColor,
+}) => (
+  <Card className="mb-4 transition-all duration-300 hover:shadow-md">
+    <CardHeader className="pb-3">
+      <div className="flex items-center justify-between">
+        <CardTitle className="text-base font-semibold text-brand-dark flex items-center">
+          <Icon className="w-5 h-5 mr-2 text-brand-accent" />
+          {title}
+        </CardTitle>
+        <Badge variant={badgeVariant} className={badgeColor}>
+          {badgeText}
+        </Badge>
+      </div>
+    </CardHeader>
+    <CardContent>
+      <p className="text-sm text-slate-600">{description}</p>
+    </CardContent>
+  </Card>
+)
+
+interface QuickLinkProps {
+  href: string
+  icon: React.ElementType
+  children: React.ReactNode
+}
+
+const QuickLink: React.FC<QuickLinkProps> = ({ href, icon: Icon, children }) => (
+  <Button
+    variant="ghost"
+    className="w-full justify-start text-brand-accent hover:bg-blue-50 hover:text-brand-accent-hover mb-2"
+    asChild
+  >
+    <a href={href}>
+      <Icon className="w-4 h-4 mr-2" />
+      {children}
+    </a>
+  </Button>
+)
 
 const insightsData: Record<string, React.ReactNode> = {
   overview: (
@@ -142,60 +197,6 @@ const insightsData: Record<string, React.ReactNode> = {
     </>
   ),
 }
-
-interface InsightCardProps {
-  icon: React.ElementType
-  title: string
-  description: string
-  badgeText: string
-  badgeVariant?: "default" | "secondary" | "destructive" | "outline"
-  badgeColor?: string
-}
-
-const InsightCard: React.FC<InsightCardProps> = ({
-  icon: Icon,
-  title,
-  description,
-  badgeText,
-  badgeVariant = "secondary",
-  badgeColor,
-}) => (
-  <Card className="mb-4 transition-all duration-300 hover:shadow-md">
-    <CardHeader className="pb-3">
-      <div className="flex items-center justify-between">
-        <CardTitle className="text-base font-semibold text-brand-dark flex items-center">
-          <Icon className="w-5 h-5 mr-2 text-brand-accent" />
-          {title}
-        </CardTitle>
-        <Badge variant={badgeVariant} className={badgeColor}>
-          {badgeText}
-        </Badge>
-      </div>
-    </CardHeader>
-    <CardContent>
-      <p className="text-sm text-slate-600">{description}</p>
-    </CardContent>
-  </Card>
-)
-
-interface QuickLinkProps {
-  href: string
-  icon: React.ElementType
-  children: React.ReactNode
-}
-
-const QuickLink: React.FC<QuickLinkProps> = ({ href, icon: Icon, children }) => (
-  <Button
-    variant="ghost"
-    className="w-full justify-start text-brand-accent hover:bg-blue-50 hover:text-brand-accent-hover mb-2"
-    asChild
-  >
-    <a href={href}>
-      <Icon className="w-4 h-4 mr-2" />
-      {children}
-    </a>
-  </Button>
-)
 
 export default function ContextualInsightsPanel({ activeTab }: ContextualInsightsPanelProps) {
   const content = insightsData[activeTab] || (
