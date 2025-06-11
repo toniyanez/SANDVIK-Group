@@ -3,12 +3,15 @@
 import { useState } from "react"
 import { ComposableMap, Geographies, Geography, Marker, ZoomableGroup } from "react-simple-maps"
 import { Tooltip } from "react-tooltip"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Building2, Factory, Wrench, Truck, Briefcase } from "lucide-react"
 
-// World map topology
-const geoUrl = "https://raw.githubusercontent.com/deldersveld/topojson/master/world-countries.json"
+// Use a more reliable world map topology
+const geoUrl = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json"
+
+// Fallback simple world outline if topology fails
+const fallbackWorldPath = "M-180,-90 L180,-90 L180,90 L-180,90 Z"
 
 // Location types with their respective colors and icons
 const locationTypes = {
@@ -128,7 +131,7 @@ export default function WorldMap() {
 
   return (
     <Card className="w-full">
-      <CardHeader>
+      <div className="flex flex-col space-y-1.5 p-6">
         <CardTitle className="flex items-center justify-between">
           <span>Global Footprint</span>
           <div className="flex gap-2">
@@ -151,27 +154,45 @@ export default function WorldMap() {
         <CardDescription>
           Sandvik's global presence across manufacturing, R&D, distribution, and offices
         </CardDescription>
-      </CardHeader>
+      </div>
       <CardContent>
-        <div className="h-[500px] w-full">
+        <div className="h-[500px] w-full overflow-hidden border rounded-lg bg-blue-50">
           <ComposableMap
             projectionConfig={{
-              scale: 147,
+              scale: 120,
+            }}
+            width={800}
+            height={400}
+            style={{
+              width: "100%",
+              height: "100%",
             }}
           >
-            <ZoomableGroup center={[0, 0]} zoom={1}>
+            <ZoomableGroup center={[0, 0]} zoom={1} maxZoom={3}>
               <Geographies geography={geoUrl}>
                 {({ geographies }) =>
                   geographies.map((geo) => (
                     <Geography
                       key={geo.rsmKey}
                       geography={geo}
-                      fill="#EAEAEC"
-                      stroke="#D6D6DA"
+                      fill="#E8F4FD"
+                      stroke="#B0BEC5"
+                      strokeWidth={0.5}
                       style={{
-                        default: { outline: "none" },
-                        hover: { outline: "none", fill: "#F5F5F5" },
-                        pressed: { outline: "none" },
+                        default: {
+                          outline: "none",
+                          fill: "#E8F4FD",
+                          stroke: "#B0BEC5",
+                        },
+                        hover: {
+                          outline: "none",
+                          fill: "#F0F8FF",
+                          stroke: "#90A4AE",
+                        },
+                        pressed: {
+                          outline: "none",
+                          fill: "#E3F2FD",
+                        },
                       }}
                     />
                   ))
@@ -186,12 +207,12 @@ export default function WorldMap() {
                     coordinates={[location.coordinates[0], location.coordinates[1]]}
                     onMouseEnter={() => {
                       setTooltipContent(`
-                        <div>
-                          <strong>${location.name}</strong><br/>
-                          <span>${locationTypes[location.type as keyof typeof locationTypes].name}</span><br/>
-                          <span>Business Areas: ${location.businessAreas.join(", ")}</span>
-                        </div>
-                      `)
+                      <div>
+                        <strong>${location.name}</strong><br/>
+                        <span>${locationTypes[location.type as keyof typeof locationTypes].name}</span><br/>
+                        <span>Business Areas: ${location.businessAreas.join(", ")}</span>
+                      </div>
+                    `)
                     }}
                     onMouseLeave={() => {
                       setTooltipContent("")
@@ -207,7 +228,7 @@ export default function WorldMap() {
           <Tooltip id="location-tooltip" html={tooltipContent} />
         </div>
 
-        <div className="mt-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
+        <div className="mt-6 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 pt-4 border-t">
           {Object.entries(locationTypes).map(([type, { color, name, icon: Icon }]) => (
             <div key={type} className="flex items-center gap-2">
               <div className="h-3 w-3 rounded-full" style={{ backgroundColor: color }}></div>

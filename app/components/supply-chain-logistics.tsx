@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -145,13 +145,13 @@ export default function SupplyChainLogistics() {
           const IconComponent = mode.icon
           return (
             <Card key={index} className="hover:shadow-lg transition-shadow">
-              <CardHeader>
+              <div className="flex flex-col space-y-1.5 p-6">
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <IconComponent className="h-5 w-5" />
                   {mode.mode}
                 </CardTitle>
                 <CardDescription>{mode.usage}</CardDescription>
-              </CardHeader>
+              </div>
               <CardContent className="space-y-3">
                 <div>
                   <div className="text-sm font-semibold text-gray-700">Cost Range:</div>
@@ -179,7 +179,7 @@ export default function SupplyChainLogistics() {
 
       {/* Real AI-Powered Tariff & Trade Risk Analysis */}
       <Card>
-        <CardHeader>
+        <div className="flex flex-col space-y-1.5 p-6">
           <CardTitle className="flex items-center gap-2">
             <Brain className="h-5 w-5" />
             Real-Time AI Tariff & Trade Risk Analysis
@@ -187,7 +187,7 @@ export default function SupplyChainLogistics() {
           <CardDescription>
             Live OpenAI-powered analysis of global trade policies and their impact on Sandvik's operations
           </CardDescription>
-        </CardHeader>
+        </div>
         <CardContent>
           {!aiAnalysis ? (
             <div className="text-center py-8">
@@ -356,7 +356,7 @@ export default function SupplyChainLogistics() {
 
       {/* Real AI Digital Twin */}
       <Card>
-        <CardHeader>
+        <div className="flex flex-col space-y-1.5 p-6">
           <CardTitle className="flex items-center gap-2">
             <TrendingUp className="h-5 w-5" />
             AI Digital Twin: Supply Chain Interdependency Modeling
@@ -364,7 +364,7 @@ export default function SupplyChainLogistics() {
           <CardDescription>
             Real-time AI modeling of complex interdependencies among tariffs, logistics, materials, and geopolitics
           </CardDescription>
-        </CardHeader>
+        </div>
         <CardContent>
           {!digitalTwinData ? (
             <div className="text-center py-8">
@@ -484,10 +484,10 @@ export default function SupplyChainLogistics() {
       {/* Keep existing charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
-          <CardHeader>
+          <div className="flex flex-col space-y-1.5 p-6">
             <CardTitle>Logistics Costs by Major Routes</CardTitle>
             <CardDescription>Cost comparison for heavy equipment vs. cutting tools</CardDescription>
-          </CardHeader>
+          </div>
           <CardContent>
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
@@ -506,10 +506,10 @@ export default function SupplyChainLogistics() {
         </Card>
 
         <Card>
-          <CardHeader>
+          <div className="flex flex-col space-y-1.5 p-6">
             <CardTitle>Transport Mode Distribution</CardTitle>
             <CardDescription>Usage by volume across Sandvik's logistics network</CardDescription>
-          </CardHeader>
+          </div>
           <CardContent>
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
