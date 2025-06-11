@@ -25,6 +25,7 @@ import {
   Brain,
   Sparkles,
   ArrowRight,
+  Factory,
 } from "lucide-react"
 
 // Define the structure of an insight received from the API
@@ -68,6 +69,7 @@ const iconMap: Record<string, React.ElementType> = {
   Brain,
   Sparkles,
   ArrowRight,
+  Factory,
   // Add any other icons your API might return
 }
 

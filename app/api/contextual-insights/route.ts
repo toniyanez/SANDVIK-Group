@@ -247,6 +247,86 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  // AI-generated insight for 'manufacturing' tab
+  if (tab === "manufacturing") {
+    try {
+      const { object: aiData } = await generateObject({
+        model: openai("gpt-4o"),
+        schema: AiGeneratedInsightSchema,
+        prompt: `You are a manufacturing operations analyst for Sandvik. Analyze Sandvik's global manufacturing footprint, which includes key sites like Gimo, Sweden (an Industry 4.0 Lighthouse) and Mebane, NC (a green factory). Consider the ongoing SMMS regionalization strategy. Provide one specific, actionable insight related to manufacturing efficiency, potential bottlenecks, or a new technological opportunity (e.g., additive manufacturing, predictive maintenance) for the next quarter.`,
+      })
+
+      dynamicInsights.push({
+        iconName: "Factory",
+        title: `AI: ${aiData.title}`,
+        description:
+          aiData.description +
+          (aiData.actionableSuggestion ? ` Actionable Suggestion: ${aiData.actionableSuggestion}` : ""),
+        badgeText: aiData.badgeText,
+        badgeVariant: "default",
+        badgeClassName: "bg-green-500 text-white",
+        source: "AI Manufacturing Intelligence",
+        confidence: `AI Generated (${aiData.confidence}%)`,
+        isAI: true,
+        actionLink: aiData.actionableSuggestion
+          ? { href: "#", text: "Review Operations Data", iconName: "BarChart3" }
+          : undefined,
+      })
+    } catch (error) {
+      console.error("AI insight generation failed for 'manufacturing' tab:", error)
+      dynamicInsights.push({
+        iconName: "AlertTriangle",
+        title: "AI Manufacturing Insight Failed",
+        description: "Could not generate an AI-powered manufacturing insight. Please check system logs.",
+        badgeText: "Error",
+        badgeVariant: "destructive",
+        source: "System AI Module",
+        confidence: "N/A",
+        isAI: true,
+      })
+    }
+  }
+
+  // AI-generated insight for 'logistics' tab
+  if (tab === "logistics") {
+    try {
+      const { object: aiData } = await generateObject({
+        model: openai("gpt-4o"),
+        schema: AiGeneratedInsightSchema,
+        prompt: `You are a logistics and trade compliance expert for Sandvik. Given the current logistics challenges, including Red Sea shipping disruptions, US reciprocal tariffs on EU exports, and volatile fuel prices, provide one specific, actionable insight to optimize Sandvik's logistics network. This could involve route optimization, a strategic modal shift, or a warehousing strategy to mitigate risks and reduce costs in the next 6 months.`,
+      })
+
+      dynamicInsights.push({
+        iconName: "Truck",
+        title: `AI: ${aiData.title}`,
+        description:
+          aiData.description +
+          (aiData.actionableSuggestion ? ` Actionable Suggestion: ${aiData.actionableSuggestion}` : ""),
+        badgeText: aiData.badgeText,
+        badgeVariant: "default",
+        badgeClassName: "bg-blue-500 text-white",
+        source: "AI Logistics Analytics",
+        confidence: `AI Generated (${aiData.confidence}%)`,
+        isAI: true,
+        actionLink: aiData.actionableSuggestion
+          ? { href: "#", text: "Analyze Logistics Data", iconName: "TrendingUp" }
+          : undefined,
+      })
+    } catch (error) {
+      console.error("AI insight generation failed for 'logistics' tab:", error)
+      dynamicInsights.push({
+        iconName: "AlertTriangle",
+        title: "AI Logistics Insight Failed",
+        description: "Could not generate an AI-powered logistics insight. Please check system logs.",
+        badgeText: "Error",
+        badgeVariant: "destructive",
+        source: "System AI Module",
+        confidence: "N/A",
+        isAI: true,
+      })
+    }
+  }
+
   return NextResponse.json({ insights: dynamicInsights })
 }
 
