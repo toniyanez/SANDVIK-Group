@@ -1,8 +1,9 @@
 "use client"
 
-import type React from "react"
+import { cn } from "@/lib/utils"
 
-import { useState, useEffect } from "react"
+import type React from "react"
+import { useState, useEffect, Suspense } from "react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import {
@@ -19,7 +20,9 @@ import {
   DollarSign,
   ChevronDown,
   ChevronRight,
-} from "lucide-react" // Added DollarSign, ChevronDown, ChevronRight
+  Loader2,
+  Rocket,
+} from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import {
   DropdownMenu,
@@ -37,9 +40,28 @@ import CriticalMaterials from "@/app/components/critical-materials"
 import SupplyChainLogistics from "@/app/components/supply-chain-logistics"
 import SupplyChainSimulations from "@/app/components/supply-chain-simulations"
 import ContextualInsightsPanel from "@/app/components/contextual-insights-panel"
-import FinancialsSection from "@/app/components/financials-section" // New import
+import dynamic from "next/dynamic"
 
-// Update navItems structure
+const FinancialsSection = dynamic(() => import("@/app/components/financials-section"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center min-h-[400px]">
+      <Loader2 className="h-8 w-8 animate-spin text-brand-accent" />
+      <p className="ml-2 text-lg text-slate-500">Loading Financials Component...</p>
+    </div>
+  ),
+})
+
+const StrategicDirectionSection = dynamic(() => import("@/app/components/strategic-direction"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center min-h-[400px]">
+      <Loader2 className="h-8 w-8 animate-spin text-brand-accent" />
+      <p className="ml-2 text-lg text-slate-500">Loading Strategic Direction Component...</p>
+    </div>
+  ),
+})
+
 interface NavSubItem {
   id: string
   label: string
@@ -59,7 +81,10 @@ const navItems: NavItem[] = [
     id: "overview",
     label: "Overview",
     icon: Globe,
-    subItems: [{ id: "financials", label: "Financials", icon: DollarSign, parentId: "overview" }],
+    subItems: [
+      { id: "financials", label: "Financials", icon: DollarSign, parentId: "overview" },
+      { id: "strategic-direction", label: "Strategic Direction", icon: Rocket, parentId: "overview" },
+    ],
   },
   { id: "manufacturing", label: "Manufacturing", icon: Building2 },
   { id: "materials", label: "Critical Materials", icon: AlertTriangle },
@@ -67,48 +92,63 @@ const navItems: NavItem[] = [
   { id: "simulations", label: "Simulations", icon: Play },
 ]
 
+// Define which tab IDs are valid endpoints for the /api/contextual-insights API
+const VALID_API_INSIGHT_TABS = ["overview", "financials", "manufacturing", "materials", "logistics", "simulations"]
+
 export default function StrategicCockpitPage() {
   const MAIN_HEADER_HEIGHT_PX = 68
   const SECONDARY_HEADER_HEIGHT_PX = 40
   const TOTAL_HEADER_HEIGHT_PX = MAIN_HEADER_HEIGHT_PX + SECONDARY_HEADER_HEIGHT_PX
-  const RIGHT_PANEL_WIDTH_PX = 288 // 72 * 4 (w-72)
+  const RIGHT_PANEL_WIDTH_CLASS = "w-96"
 
-  // Replace `activeTab` state with `activeView` and `expandedMainTab`
-  // const [activeTab, setActiveTab] = useState("overview")
   const [activeView, setActiveView] = useState("overview")
-  const [expandedMainTab, setExpandedMainTab] = useState<string | null>("overview") // Keep overview expanded by default
-
+  const [expandedMainTab, setExpandedMainTab] = useState<string | null>("overview")
   const [secondaryHeaderText, setSecondaryHeaderText] = useState("")
 
-  // Update useEffect for secondaryHeaderText
   useEffect(() => {
     let headerText = "Sandvik Group Supply Chain Data"
-    const currentMainItem = navItems.find(
-      (item) =>
-        item.id === (activeView === "financials" ? "overview" : activeView) ||
-        item.subItems?.some((sub) => sub.id === activeView),
-    )
+    const parentItem = navItems.find((item) => item.subItems?.some((sub) => sub.id === activeView))
+    const currentItem =
+      parentItem?.subItems?.find((sub) => sub.id === activeView) || navItems.find((item) => item.id === activeView)
 
-    if (currentMainItem) {
-      if (currentMainItem.subItems?.some((sub) => sub.id === activeView)) {
-        const currentSubItem = currentMainItem.subItems.find((sub) => sub.id === activeView)
-        if (currentSubItem) {
-          headerText = `${currentMainItem.label} > ${currentSubItem.label} View - Sandvik Group Supply Chain Data`
-        }
-      } else {
-        headerText = `${currentMainItem.label} View - Sandvik Group Supply Chain Data`
-      }
+    if (parentItem && currentItem && parentItem.id !== currentItem.id) {
+      headerText = `${parentItem.label} > ${currentItem.label} View - Sandvik Group Supply Chain Data`
+    } else if (currentItem) {
+      headerText = `${currentItem.label} View - Sandvik Group Supply Chain Data`
     }
     setSecondaryHeaderText(headerText)
   }, [activeView])
 
-  // Update renderContent function
   const renderContent = () => {
     switch (activeView) {
       case "overview":
         return <SandvikOverview />
       case "financials":
-        return <FinancialsSection /> // New case
+        return (
+          <Suspense
+            fallback={
+              <div className="flex items-center justify-center min-h-[400px]">
+                <Loader2 className="h-8 w-8 animate-spin text-brand-accent" />
+                <p className="ml-2 text-lg text-slate-500">Loading Financials Component...</p>
+              </div>
+            }
+          >
+            <FinancialsSection />
+          </Suspense>
+        )
+      case "strategic-direction":
+        return (
+          <Suspense
+            fallback={
+              <div className="flex items-center justify-center min-h-[400px]">
+                <Loader2 className="h-8 w-8 animate-spin text-brand-accent" />
+                <p className="ml-2 text-lg text-slate-500">Loading Strategic Direction Component...</p>
+              </div>
+            }
+          >
+            <StrategicDirectionSection />
+          </Suspense>
+        )
       case "manufacturing":
         return <ManufacturingFootprint />
       case "materials":
@@ -122,13 +162,31 @@ export default function StrategicCockpitPage() {
     }
   }
 
+  // Determine the correct tab for the Contextual Insights Panel.
+  let determinedInsightsTabForPanel: string
+
+  if (VALID_API_INSIGHT_TABS.includes(activeView)) {
+    // If the activeView itself is a tab with its own insights (e.g., "financials", "overview")
+    determinedInsightsTabForPanel = activeView
+  } else {
+    // If activeView is a sub-item (e.g., "strategic-direction") or an unknown tab,
+    // try to find its parent.
+    const parentItem = navItems.find((item) => item.subItems?.some((sub) => sub.id === activeView))
+    if (parentItem && VALID_API_INSIGHT_TABS.includes(parentItem.id)) {
+      // If parent exists and parent's ID is a valid API tab, use parent's ID.
+      // (e.g., "strategic-direction" has parent "overview", which is valid)
+      determinedInsightsTabForPanel = parentItem.id
+    } else {
+      // Fallback for any other case (e.g., no parent, or parent.id is not a valid API tab)
+      determinedInsightsTabForPanel = "overview"
+    }
+  }
+  const insightsTab = determinedInsightsTabForPanel
+
   return (
     <AuthGuard>
       <div className="bg-brand-background">
         <div className="flex flex-col min-h-screen max-w-full">
-          {" "}
-          {/* Changed max-w-7xl to max-w-full */}
-          {/* Main Header */}
           <header
             className="bg-brand-dark text-white sticky top-0 z-50 border-b border-brand-dark-secondary"
             style={{ height: `${MAIN_HEADER_HEIGHT_PX}px` }}
@@ -181,10 +239,7 @@ export default function StrategicCockpitPage() {
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
-                  {/* User Profile Dropdown - kept from previous version */}
                   <div className="ml-2">
-                    {" "}
-                    {/* Add some margin to separate from icons */}
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button
@@ -219,7 +274,7 @@ export default function StrategicCockpitPage() {
                         <DropdownMenuItem
                           onClick={() => {
                             sessionStorage.removeItem("scc-auth")
-                            window.location.reload() // Force reload to trigger AuthGuard
+                            window.location.reload()
                           }}
                           className="text-red-400 focus:bg-red-500/20 focus:text-red-300"
                         >
@@ -233,7 +288,6 @@ export default function StrategicCockpitPage() {
               </div>
             </div>
           </header>
-          {/* Secondary Header */}
           <div
             className="bg-brand-dark-secondary text-slate-300 text-sm sticky z-40 border-b border-slate-700"
             style={{ top: `${MAIN_HEADER_HEIGHT_PX}px`, height: `${SECONDARY_HEADER_HEIGHT_PX}px` }}
@@ -242,9 +296,7 @@ export default function StrategicCockpitPage() {
               <p>{secondaryHeaderText}</p>
             </div>
           </div>
-          {/* Main Content Area with Sidebar and Right Panel */}
           <div className="flex-1 flex">
-            {/* Left Sidebar */}
             <aside
               className="w-64 bg-brand-dark text-slate-200 flex flex-col justify-between sticky z-30"
               style={{
@@ -254,11 +306,7 @@ export default function StrategicCockpitPage() {
             >
               <div className="flex-grow px-4 pt-4">
                 <TooltipProvider delayDuration={0}>
-                  {/* Update sidebar rendering logic within the return statement's <aside> section: */}
-                  {/* Replace the existing <nav> block with this new one: */}
                   <nav className="space-y-1">
-                    {" "}
-                    {/* Adjusted spacing */}
                     {navItems.map((item) => {
                       const isMainActive =
                         item.id === activeView ||
@@ -272,12 +320,12 @@ export default function StrategicCockpitPage() {
                               <Button
                                 variant="ghost"
                                 onClick={() => {
-                                  setActiveView(item.id) // Clicking main item sets its view
-                                  setExpandedMainTab(item.id === expandedMainTab && item.subItems ? null : item.id) // Toggle expansion
+                                  setActiveView(item.id)
+                                  setExpandedMainTab(item.id === expandedMainTab && item.subItems ? null : item.id)
                                 }}
                                 className={`w-full justify-start items-center space-x-3 py-2.5 rounded-lg transition-all duration-200 ease-in-out
-                ${isMainActive && !item.subItems?.some((sub) => sub.id === activeView) ? "bg-brand-accent text-white font-semibold" : "text-slate-300 hover:bg-brand-dark-secondary hover:text-white"}
-              `}
+                                  ${isMainActive && !item.subItems?.some((sub) => sub.id === activeView) ? "bg-brand-accent text-white font-semibold" : "text-slate-300 hover:bg-brand-dark-secondary hover:text-white"}
+                                `}
                               >
                                 <item.icon className="h-5 w-5 flex-shrink-0" />
                                 <span className="text-sm flex-1 text-left">{item.label}</span>
@@ -304,12 +352,11 @@ export default function StrategicCockpitPage() {
                                         variant="ghost"
                                         onClick={() => setActiveView(subItem.id)}
                                         className={`w-full justify-start items-center space-x-3 py-2 rounded-lg transition-all duration-200 ease-in-out
-                        ${isSubActive ? "bg-brand-accent text-white font-semibold" : "text-slate-400 hover:bg-brand-dark-secondary hover:text-slate-200"}
-                      `}
+                                          ${isSubActive ? "bg-brand-accent text-white font-semibold" : "text-slate-400 hover:bg-brand-dark-secondary hover:text-slate-200"}
+                                        `}
                                       >
-                                        <subItem.icon className="h-4 w-4 flex-shrink-0 ml-1" />{" "}
-                                        {/* Adjusted icon size and margin */}
-                                        <span className="text-xs">{subItem.label}</span> {/* Adjusted text size */}
+                                        <subItem.icon className="h-4 w-4 flex-shrink-0 ml-1" />
+                                        <span className="text-xs">{subItem.label}</span>
                                       </Button>
                                     </TooltipTrigger>
                                     <TooltipContent side="right" className="bg-slate-900 text-white border-slate-700">
@@ -326,24 +373,19 @@ export default function StrategicCockpitPage() {
                   </nav>
                 </TooltipProvider>
               </div>
-
-              {/* User Profile Section in Sidebar - moved to header */}
             </aside>
-
-            {/* Main Content Display */}
             <main className="flex-1 p-6 bg-brand-background overflow-y-auto">{renderContent()}</main>
-
-            {/* Right Contextual Panel */}
             <aside
-              className="w-72 bg-white border-l border-slate-200 flex-shrink-0 sticky z-20 overflow-y-auto"
+              className={cn(
+                "bg-white border-l border-slate-200 flex-shrink-0 sticky z-20 overflow-y-auto",
+                RIGHT_PANEL_WIDTH_CLASS,
+              )}
               style={{
                 top: `${TOTAL_HEADER_HEIGHT_PX}px`,
                 height: `calc(100vh - ${TOTAL_HEADER_HEIGHT_PX}px)`,
               }}
             >
-              {/* In the ContextualInsightsPanel component usage: */}
-              {/* Change `activeTab={activeTab}` to `activeTab={activeView}` */}
-              <ContextualInsightsPanel activeTab={activeView} />
+              <ContextualInsightsPanel key={insightsTab} activeTab={insightsTab} />
             </aside>
           </div>
         </div>

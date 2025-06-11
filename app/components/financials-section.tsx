@@ -1,632 +1,521 @@
 "use client"
-import { useState, useEffect } from "react"
+
+import type React from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Progress } from "@/components/ui/progress"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import {
-  DollarSign,
   TrendingUp,
-  PieChartIcon,
+  DollarSign,
+  Briefcase,
   Landmark,
+  Scale,
+  PiggyBank,
+  Receipt,
   Target,
   Percent,
-  Scale,
-  Banknote,
-  Receipt,
-  ShieldCheck,
   CalendarDays,
+  Info,
+  BarChartHorizontalBig,
   FileText,
-  Activity,
-  ChevronsRight,
+  Lightbulb,
+  LineChart,
+  Banknote,
+  ArrowRightLeft,
+  Building,
+  ShieldCheck,
+  ListChecks,
 } from "lucide-react"
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Legend,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-  Cell,
-  LabelList,
-} from "recharts"
 import { Badge } from "@/components/ui/badge"
 
-// Helper to format numbers
-const formatNumber = (num: number, precision = 1, unitPrefix = "") => {
-  const absNum = Math.abs(num)
-  if (absNum >= 1e9) {
-    return unitPrefix + (num / 1e9).toFixed(precision) + "B"
-  }
-  if (absNum >= 1e6) {
-    return unitPrefix + (num / 1e6).toFixed(precision) + "M"
-  }
-  if (absNum >= 1e3) {
-    return unitPrefix + (num / 1e3).toFixed(precision) + "K"
-  }
-  return unitPrefix + num.toFixed(precision)
+interface KpiCardProps {
+  title: string
+  value: string
+  change?: string
+  changeType?: "positive" | "negative" | "neutral"
+  icon: React.ElementType
+  unit?: string
+  description?: string
 }
 
-const formatSEK = (num: number, precision = 1) => formatNumber(num, precision, "SEK ")
-
-// Data from PDF (Q1 2025) - same as before
-const consolidatedOverviewData = {
-  orderIntake: { current: 32763, previous: 31981, unit: "M SEK", changePct: "+2%" },
-  revenues: { current: 29301, previous: 29002, unit: "M SEK", changePct: "+1%" },
-  bookToBill: 112, // %
-  adjEBITA: { current: 5768, previous: 5281, unit: "M SEK", changePct: "+9%" },
-  adjEBITAMargin: { current: 19.7, previous: 18.2, unit: "%", changePts: "+1.5ppts" },
-  adjProfit: { current: 3800, previous: 3300, unit: "M SEK" },
-  adjEPS: { current: 3.01, previous: 2.61, unit: "SEK", changePct: "+15%" },
-  focf: { current: 3809, previous: 3770, unit: "M SEK", changePct: "+1%" },
-  cashConversionTTM: 93, // %
-  profitForPeriod: { current: 3736, previous: 1247, unit: "M SEK", changePct: "+200%" },
-}
-
-const growthBridgeData = [
-  { component: "Organic", orderIntakePct: 2, revenuesPct: 1 },
-  { component: "Structure", orderIntakePct: 1, revenuesPct: 1 },
-  { component: "Currency", orderIntakePct: -1, revenuesPct: -1 },
-] // Total is derived
-
-const ebitdaBridgeData = {
-  q1_2024: 5281,
-  organic: 203,
-  currency: 237,
-  structure: 48,
-  q1_2025: 5768,
-  margin: {
-    q1_2024: 18.2,
-    organicAccretion: 0.6,
-    currencyAccretion: 1.0,
-    structureAccretion: 0.0,
-    q1_2025: 19.7,
-  },
-}
-
-const balanceSheetData = {
-  nwc: { current: 33.9, previous: 36.6, unit: "B SEK" },
-  nwcToRevenuesTTM: { current: 29.8, previous: 29.7, unit: "%" },
-  finNetDebt: { current: 31.2, previous: 33.9, unit: "B SEK" },
-  finNetDebtToEBITDA: { current: 1.1, previous: 1.3, unit: "x", target: 1.5 }, // Target <1.5x
-  totalNetDebt: { current: 39.7, previous: 42.2, unit: "B SEK" },
-  avgInterestRate: 3.1, // %
-  capex: { current: 1.0, previous: 1.2, unit: "B SEK", desc: "117% of depreciation" },
-  interestNet: { current: -206, previous: -363, unit: "M SEK" },
-  normTaxRate: { current: 23.8, previous: 24.0, unit: "%" },
-  roce: { current: 15.4, previous: 14.0, unit: "%" },
-  roceExAmort: { current: 16.7, previous: 15.5, unit: "%" },
-}
-
-const outlookData = {
-  q2_2025_currency_ebita_impact: -600, // M SEK
-  fy2025_capex_cash: 5.0, // B SEK
-  fy2025_interest_net: -0.8, // B SEK
-  fy2025_norm_tax_rate: "23-25%",
-  longTermTargets: [
-    { name: "Growth (Organic + M&A)", targetValue: 7, unit: "%", icon: TrendingUp, info: "Through business cycle" },
-    { name: "Adjusted EBITA Margin", targetMin: 20, targetMax: 22, currentValue: 19.7, unit: "%", icon: Percent },
-    { name: "Dividend Payout Ratio (Adj. EPS)", targetValue: 50, unit: "%", icon: PieChartIcon },
-    {
-      name: "Financial Net Debt/EBITDA",
-      targetValue: 1.5,
-      targetComparison: "lessThan",
-      currentValue: 1.1,
-      unit: "x",
-      icon: ShieldCheck,
-    },
-  ],
-}
-
-const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884D8", "#A4DE6C", "#D0ED57", "#FFC658"]
-const POSITIVE_COLOR = "#10B981" // Green
-const NEGATIVE_COLOR = "#EF4444" // Red
-const NEUTRAL_COLOR = "#6B7280" // Gray
-
-// CustomTooltip remains the same for other charts, but we'll use default for the first one.
-const CustomTooltip = ({ active, payload, label }: any) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="bg-white p-3 border border-gray-300 rounded shadow-lg">
-        <p className="label font-semibold text-gray-700">{`${label}`}</p>
-        {payload.map((entry: any, index: number) => (
-          <p key={`item-${index}`} style={{ color: entry.color }}>
-            {`${entry.name}: ${entry.formatter ? entry.formatter(entry.value) : formatSEK(entry.value, entry.payload.unit === "SEK" ? 2 : 1)}`}
-          </p>
-        ))}
-      </div>
-    )
-  }
-  return null
-}
-
-const GrowthBridgeChart = ({ data, title }: { data: { component: string; value: number }[]; title: string }) => {
-  const [isClient, setIsClientLocal] = useState(false)
-  useEffect(() => {
-    setIsClientLocal(true)
-  }, [])
-
-  if (!isClient) {
-    return (
-      <div
-        style={{
-          height: "70px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: "#f9fafb",
-        }}
-      >
-        <p className="text-xs text-slate-400">Loading chart...</p>
-      </div>
-    ) // Placeholder
-  }
+const KpiCard: React.FC<KpiCardProps> = ({
+  title,
+  value,
+  change,
+  changeType = "neutral",
+  icon: Icon,
+  unit,
+  description,
+}) => {
+  let changeColor = "text-slate-500"
+  if (changeType === "positive") changeColor = "text-green-600 dark:text-green-500"
+  if (changeType === "negative") changeColor = "text-red-600 dark:text-red-500"
 
   return (
-    <div>
-      <h4 className="text-md font-semibold text-brand-dark mb-1 text-center">{title}</h4>
-      <ResponsiveContainer width="100%" height={60}>
-        <BarChart data={data} layout="vertical" barCategoryGap="10%">
-          <XAxis type="number" hide />
-          <YAxis type="category" dataKey="component" hide />
-          <Tooltip content={<CustomTooltip />} />
-          {data.map((entry, index) => (
-            <Bar
-              key={entry.component}
-              dataKey="value"
-              stackId="a"
-              fill={entry.value >= 0 ? COLORS[index % COLORS.length] : NEGATIVE_COLOR}
-            >
-              <LabelList
-                dataKey="value"
-                position="insideRight"
-                formatter={(value: number) => `${value > 0 ? "+" : ""}${value}%`}
-                style={{ fill: "white", fontSize: "10px" }}
-              />
-            </Bar>
-          ))}
-        </BarChart>
-      </ResponsiveContainer>
-      <div className="flex justify-between text-xs text-slate-500 mt-1 px-2">
-        <span>Start</span>
-        <span>
-          Total: {data.reduce((acc, curr) => acc + curr.value, 0) > 0 ? "+" : ""}
-          {data.reduce((acc, curr) => acc + curr.value, 0)}%
-        </span>
-      </div>
-    </div>
-  )
-}
-
-export default function FinancialsSection() {
-  const performanceChartData = [
-    {
-      name: "Order Intake",
-      Q1_2025: consolidatedOverviewData.orderIntake.current,
-      Q1_2024: consolidatedOverviewData.orderIntake.previous,
-      unit: "M SEK",
-    },
-    {
-      name: "Revenues",
-      Q1_2025: consolidatedOverviewData.revenues.current,
-      Q1_2024: consolidatedOverviewData.revenues.previous,
-      unit: "M SEK",
-    },
-    {
-      name: "Adj. EBITA",
-      Q1_2025: consolidatedOverviewData.adjEBITA.current,
-      Q1_2024: consolidatedOverviewData.adjEBITA.previous,
-      unit: "M SEK",
-    },
-    {
-      name: "FOCF",
-      Q1_2025: consolidatedOverviewData.focf.current,
-      Q1_2024: consolidatedOverviewData.focf.previous,
-      unit: "M SEK",
-    },
-  ]
-
-  const ebitdaBridgeChartData = [
-    { name: "Q1'24 EBITA", value: ebitdaBridgeData.q1_2024, fill: NEUTRAL_COLOR },
-    { name: "Organic", value: ebitdaBridgeData.organic, fill: POSITIVE_COLOR },
-    { name: "Currency", value: ebitdaBridgeData.currency, fill: POSITIVE_COLOR },
-    { name: "Structure", value: ebitdaBridgeData.structure, fill: POSITIVE_COLOR },
-    { name: "Q1'25 EBITA", value: ebitdaBridgeData.q1_2025, fill: COLORS[0] },
-  ]
-
-  const balanceSheetChartData = [
-    { name: "NWC", Q1_2025: balanceSheetData.nwc.current, Q1_2024: balanceSheetData.nwc.previous, unit: "B SEK" },
-    {
-      name: "Fin. Net Debt",
-      Q1_2025: balanceSheetData.finNetDebt.current,
-      Q1_2024: balanceSheetData.finNetDebt.previous,
-      unit: "B SEK",
-    },
-    { name: "Capex", Q1_2025: balanceSheetData.capex.current, Q1_2024: balanceSheetData.capex.previous, unit: "B SEK" },
-  ]
-
-  const roceChartData = [
-    { name: "ROCE", Q1_2025: balanceSheetData.roce.current, Q1_2024: balanceSheetData.roce.previous, unit: "%" },
-    {
-      name: "ROCE (ex. Amort.)",
-      Q1_2025: balanceSheetData.roceExAmort.current,
-      Q1_2024: balanceSheetData.roceExAmort.previous,
-      unit: "%",
-    },
-  ]
-
-  const orderIntakeGrowthData = growthBridgeData.map((item) => ({
-    component: item.component,
-    value: item.orderIntakePct,
-  }))
-  const revenueGrowthData = growthBridgeData.map((item) => ({ component: item.component, value: item.revenuesPct }))
-
-  const [isClient, setIsClient] = useState(false)
-
-  useEffect(() => {
-    setIsClient(true)
-  }, [])
-
-  // Placeholder for charts if not client-side yet
-  const ChartPlaceholder = ({ height = 300 }: { height?: number }) => (
-    <div
-      style={{
-        height: `${height}px`,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        backgroundColor: "#f9fafb",
-        border: "1px dashed #e5e7eb",
-        borderRadius: "8px",
-      }}
-    >
-      <p className="text-sm text-slate-400">Loading chart...</p>
-    </div>
-  )
-
-  return (
-    <div className="space-y-8 p-4 md:p-6 bg-slate-50 min-h-screen">
-      <header className="text-center mb-10">
-        <h1 className="text-3xl md:text-4xl font-bold text-brand-dark">Sandvik Group Financials - Q1 2025</h1>
-        <p className="text-slate-600 mt-2 text-lg">Key Performance and Strategic Outlook from Q1 2025 Report</p>
-      </header>
-
-      {/* A. Consolidated Financial Overview */}
-      <section id="consolidated-overview">
-        <h2 className="text-2xl font-semibold text-brand-dark mb-3 pb-2 border-b-2 border-brand flex items-center">
-          <Activity className="mr-2 text-brand" /> A. Consolidated Financial Overview (Q1 2025)
-        </h2>
-        <Card className="mb-6 transition-all duration-300 hover:shadow-xl">
-          <CardHeader>
-            <CardTitle className="text-xl font-semibold text-brand-dark">
-              Q1 Performance Snapshot (vs Q1 2024)
-            </CardTitle>
-            <CardDescription>Key financial metrics in Millions of SEK (MSEK).</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isClient ? (
-              // Using fixed width and height for the BarChart directly
-              <div style={{ width: "100%", height: "300px" }}>
-                {" "}
-                {/* Ensure parent has dimensions */}
-                <BarChart
-                  width={500} // Example fixed width, adjust as needed or use parent %
-                  height={300}
-                  data={performanceChartData}
-                  margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-                  <XAxis dataKey="name" tick={{ fontSize: 12 }} stroke="#666" />
-                  <YAxis tickFormatter={(value) => formatNumber(value, 0)} tick={{ fontSize: 12 }} stroke="#666" />
-                  <Tooltip /> {/* Using default tooltip for simplicity */}
-                  <Legend wrapperStyle={{ fontSize: "12px" }} />
-                  <Bar dataKey="Q1_2025" fill={COLORS[0]} name="Q1 2025" radius={[4, 4, 0, 0]} barSize={35} />
-                  <Bar dataKey="Q1_2024" fill={COLORS[1]} name="Q1 2024" radius={[4, 4, 0, 0]} barSize={35} />
-                </BarChart>
-              </div>
-            ) : (
-              <ChartPlaceholder height={300} />
-            )}
-            <div className="mt-6 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 text-center">
-              {[
-                {
-                  label: "Adj. EBITA Margin",
-                  value: `${consolidatedOverviewData.adjEBITAMargin.current}%`,
-                  change: `vs ${consolidatedOverviewData.adjEBITAMargin.previous}% (${consolidatedOverviewData.adjEBITAMargin.changePts})`,
-                  icon: Percent,
-                },
-                {
-                  label: "Adj. EPS",
-                  value: `${consolidatedOverviewData.adjEPS.current} SEK`,
-                  change: `vs ${consolidatedOverviewData.adjEPS.previous} SEK (${consolidatedOverviewData.adjEPS.changePct})`,
-                  icon: TrendingUp,
-                },
-                { label: "Book-to-Bill", value: `${consolidatedOverviewData.bookToBill}%`, icon: FileText },
-                {
-                  label: "Cash Conversion (TTM)",
-                  value: `${consolidatedOverviewData.cashConversionTTM}%`,
-                  icon: Receipt,
-                },
-                {
-                  label: "Profit for Period",
-                  value: formatSEK(consolidatedOverviewData.profitForPeriod.current, 0),
-                  change: `vs ${formatSEK(consolidatedOverviewData.profitForPeriod.previous, 0)} (${consolidatedOverviewData.profitForPeriod.changePct})`,
-                  icon: TrendingUp,
-                },
-              ].map((item) => (
-                <div key={item.label} className="p-3 bg-slate-100 rounded-lg">
-                  <item.icon className="h-6 w-6 text-brand mx-auto mb-1" />
-                  <p className="text-sm font-medium text-slate-700">{item.label}</p>
-                  <p className="text-lg font-bold text-brand-dark">{item.value}</p>
-                  {item.change && <p className="text-xs text-slate-500">{item.change}</p>}
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="mb-6 transition-all duration-300 hover:shadow-xl">
-          <CardHeader>
-            <CardTitle className="text-xl font-semibold text-brand-dark">Growth & Profitability Drivers</CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div>
-              <h3 className="text-lg font-semibold text-brand-dark mb-3">Growth Bridge (Q1 2025 Y/Y %)</h3>
-              <div className="space-y-4">
-                <GrowthBridgeChart data={orderIntakeGrowthData} title="Order Intake Growth Components" />
-                <GrowthBridgeChart data={revenueGrowthData} title="Revenue Growth Components" />
-              </div>
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold text-brand-dark mb-3">Adjusted EBITA Bridge (Q1'24 to Q1'25)</h3>
-              {isClient ? (
-                <ResponsiveContainer width="100%" height={250}>
-                  <BarChart data={ebitdaBridgeChartData} layout="vertical" margin={{ right: 30, left: 30 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis type="number" tickFormatter={(value) => formatNumber(value, 0)} />
-                    <YAxis dataKey="name" type="category" width={100} interval={0} tick={{ fontSize: 11 }} />
-                    <Tooltip formatter={(value: number) => `${formatSEK(value)}`} />
-                    <Bar dataKey="value" name="MSEK">
-                      {ebitdaBridgeChartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.fill} />
-                      ))}
-                      <LabelList
-                        dataKey="value"
-                        position="right"
-                        formatter={(value: number) => formatSEK(value, 0)}
-                        style={{ fontSize: 10 }}
-                      />
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <ChartPlaceholder height={250} />
-              )}
-              <p className="text-xs text-slate-500 mt-2 text-center">
-                Q1'24 Margin: {ebitdaBridgeData.margin.q1_2024}%. Accretion: Organic +
-                {ebitdaBridgeData.margin.organicAccretion}ppts, Currency +{ebitdaBridgeData.margin.currencyAccretion}
-                ppts, Structure +{ebitdaBridgeData.margin.structureAccretion}ppts. Q1'25 Margin:{" "}
-                {ebitdaBridgeData.margin.q1_2025}%.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </section>
-
-      {/* B. Balance Sheet and Capital Efficiency */}
-      <section id="balance-sheet">
-        <h2 className="text-2xl font-semibold text-brand-dark mb-3 pb-2 border-b-2 border-brand flex items-center">
-          <Landmark className="mr-2 text-brand" /> B. Balance Sheet & Capital Efficiency (Q1 2025)
-        </h2>
-        <Card className="mb-6 transition-all duration-300 hover:shadow-xl">
-          <CardHeader>
-            <CardTitle className="text-xl font-semibold text-brand-dark">
-              Capital Structure & Returns (vs Q1 2024)
-            </CardTitle>
-            <CardDescription>Values in Billions of SEK (BSEK) unless otherwise noted.</CardDescription>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div>
-              <h3 className="text-lg font-semibold text-brand-dark mb-3">Key Balance Sheet Items</h3>
-              {isClient ? (
-                <ResponsiveContainer width="100%" height={250}>
-                  <BarChart data={balanceSheetChartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                    <YAxis tickFormatter={(value) => formatNumber(value, 1)} />
-                    <Tooltip content={<CustomTooltip />} />
-                    <Legend wrapperStyle={{ fontSize: "12px" }} />
-                    <Bar dataKey="Q1_2025" fill={COLORS[0]} name="Q1 2025" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="Q1_2024" fill={COLORS[1]} name="Q1 2024" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <ChartPlaceholder height={250} />
-              )}
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold text-brand-dark mb-3">Return on Capital Employed (ROCE)</h3>
-              {isClient ? (
-                <ResponsiveContainer width="100%" height={250}>
-                  <BarChart data={roceChartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                    <YAxis unit="%" tickFormatter={(value) => `${value}%`} />
-                    <Tooltip formatter={(value: number) => `${value}%`} />
-                    <Legend wrapperStyle={{ fontSize: "12px" }} />
-                    <Bar dataKey="Q1_2025" fill={COLORS[2]} name="Q1 2025 (%)" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="Q1_2024" fill={COLORS[3]} name="Q1 2024 (%)" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <ChartPlaceholder height={250} />
-              )}
-            </div>
-          </CardContent>
-          <CardContent className="mt-0 pt-0">
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm p-4 bg-slate-50 rounded-md">
-              <div>
-                <p className="font-medium text-slate-700">NWC / Revenues (TTM)</p>
-                <p className="text-lg font-bold text-brand-dark">
-                  {balanceSheetData.nwcToRevenuesTTM.current}%
-                  <span className="text-xs text-slate-500"> (Prev: {balanceSheetData.nwcToRevenuesTTM.previous}%)</span>
-                </p>
-              </div>
-              <div>
-                <p className="font-medium text-slate-700">Fin. Net Debt / EBITDA</p>
-                <p className="text-lg font-bold text-brand-dark">
-                  {balanceSheetData.finNetDebtToEBITDA.current}x
-                  <span className="text-xs text-slate-500">
-                    {" "}
-                    (Prev: {balanceSheetData.finNetDebtToEBITDA.previous}x)
-                  </span>
-                </p>
-                <Progress
-                  value={
-                    (balanceSheetData.finNetDebtToEBITDA.current / balanceSheetData.finNetDebtToEBITDA.target) * 100
-                  }
-                  className="h-2 mt-1"
-                  indicatorClassName={
-                    balanceSheetData.finNetDebtToEBITDA.current < balanceSheetData.finNetDebtToEBITDA.target
-                      ? "bg-green-500"
-                      : "bg-red-500"
-                  }
-                />
-                <p className="text-xs text-slate-500">Target: &lt;{balanceSheetData.finNetDebtToEBITDA.target}x</p>
-              </div>
-              <div>
-                <p className="font-medium text-slate-700">Interest Net (Q1)</p>
-                <p className="text-lg font-bold text-brand-dark">
-                  {formatSEK(balanceSheetData.interestNet.current)}
-                  <span className="text-xs text-slate-500">
-                    {" "}
-                    (Prev: {formatSEK(balanceSheetData.interestNet.previous)})
-                  </span>
-                </p>
-              </div>
-              <div>
-                <p className="font-medium text-slate-700">Normalized Tax Rate (Q1)</p>
-                <p className="text-lg font-bold text-brand-dark">
-                  {balanceSheetData.normTaxRate.current}%
-                  <span className="text-xs text-slate-500"> (Prev: {balanceSheetData.normTaxRate.previous}%)</span>
-                </p>
-              </div>
-              <div>
-                <p className="font-medium text-slate-700">Avg. Interest Rate</p>
-                <p className="text-lg font-bold text-brand-dark">~{balanceSheetData.avgInterestRate}%</p>
-              </div>
-              <div>
-                <p className="font-medium text-slate-700">Capex (Q1)</p>
-                <p className="text-lg font-bold text-brand-dark">
-                  {formatSEK(balanceSheetData.capex.current, 1)}B
-                  <span className="text-xs text-slate-500"> ({balanceSheetData.capex.desc})</span>
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </section>
-
-      {/* C. Financial Guidance and Outlook (FY 2025) */}
-      <section id="outlook">
-        <h2 className="text-2xl font-semibold text-brand-dark mb-3 pb-2 border-b-2 border-brand flex items-center">
-          <Target className="mr-2 text-brand" /> C. Financial Guidance & Outlook (FY 2025)
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card className="transition-all duration-300 hover:shadow-xl">
-            <CardHeader>
-              <CardTitle className="text-xl font-semibold text-brand-dark flex items-center">
-                <CalendarDays className="mr-2 h-5 w-5 text-brand" /> FY 2025 Guidance
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {[
-                {
-                  label: "Q2 EBITA Currency Impact (Est.)",
-                  value: formatSEK(outlookData.q2_2025_currency_ebita_impact),
-                  icon: DollarSign,
-                },
-                { label: "Capex (Cash)", value: `~${formatSEK(outlookData.fy2025_capex_cash, 1)}B`, icon: Scale },
-                { label: "Interest Net", value: `~${formatSEK(outlookData.fy2025_interest_net, 1)}B`, icon: Banknote },
-                { label: "Normalized Tax Rate", value: outlookData.fy2025_norm_tax_rate, icon: Percent },
-              ].map((item) => (
-                <div key={item.label} className="flex items-center p-3 bg-slate-100 rounded-md">
-                  <item.icon className="h-6 w-6 text-brand mr-3 flex-shrink-0" />
-                  <div>
-                    <p className="text-sm font-medium text-slate-700">{item.label}</p>
-                    <p className="text-md font-semibold text-brand-dark">{item.value}</p>
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-
-          <Card className="transition-all duration-300 hover:shadow-xl">
-            <CardHeader>
-              <CardTitle className="text-xl font-semibold text-brand-dark flex items-center">
-                <ChevronsRight className="mr-2 h-5 w-5 text-brand" /> Long-Term Financial Targets
-              </CardTitle>
-              <CardDescription>Defined in 2022, through a business cycle.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {outlookData.longTermTargets.map((target) => (
-                <div key={target.name} className="p-3 bg-slate-100 rounded-md">
-                  <div className="flex items-center mb-1">
-                    <target.icon className="h-5 w-5 text-brand mr-2 flex-shrink-0" />
-                    <p className="text-sm font-medium text-slate-700">{target.name}</p>
-                  </div>
-                  <div className="flex items-baseline justify-between">
-                    <p className="text-lg font-bold text-brand-dark">
-                      Target: {target.targetComparison === "lessThan" ? "<" : ""}
-                      {target.targetValue || `${target.targetMin}-${target.targetMax}`}
-                      {target.unit}
-                    </p>
-                    {target.currentValue !== undefined && (
-                      <Badge
-                        variant={
-                          target.name === "Financial Net Debt/EBITDA" && target.currentValue < target.targetValue
-                            ? "success"
-                            : target.name === "Adjusted EBITA Margin" && target.currentValue >= (target.targetMin || 0)
-                              ? "success"
-                              : "outline"
-                        }
-                      >
-                        Current: {target.currentValue}
-                        {target.unit}
-                      </Badge>
-                    )}
-                  </div>
-                  {target.name === "Financial Net Debt/EBITDA" &&
-                    target.currentValue !== undefined &&
-                    target.targetValue && (
-                      <Progress
-                        value={(target.currentValue / target.targetValue) * 100}
-                        className="h-2 mt-1"
-                        indicatorClassName={target.currentValue < target.targetValue ? "bg-green-500" : "bg-red-500"}
-                      />
-                    )}
-                  {target.name === "Adjusted EBITA Margin" &&
-                    target.currentValue !== undefined &&
-                    target.targetMin &&
-                    target.targetMax && (
-                      <Progress
-                        value={(target.currentValue / target.targetMax) * 100}
-                        className="h-2 mt-1"
-                        indicatorClassName={target.currentValue >= target.targetMin ? "bg-green-500" : "bg-orange-400"}
-                      />
-                    )}
-                  {target.info && <p className="text-xs text-slate-500 mt-1">{target.info}</p>}
-                </div>
-              ))}
-            </CardContent>
-          </Card>
+    <Card className="shadow-md hover:shadow-lg transition-shadow duration-300 rounded-lg">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">{title}</CardTitle>
+        <Icon className="h-5 w-5 text-brand-accent" />
+      </CardHeader>
+      <CardContent className="pt-1">
+        <div className="text-3xl font-bold text-brand-dark dark:text-slate-50">
+          {value}
+          {unit && <span className="text-xl font-normal text-slate-500 dark:text-slate-400 ml-1.5">{unit}</span>}
         </div>
-      </section>
+        {change && <p className={`text-xs ${changeColor} mt-1.5`}>{change} vs Q1 2024</p>}
+        {description && <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{description}</p>}
+      </CardContent>
+    </Card>
+  )
+}
 
-      <footer className="text-center mt-12 text-xs text-slate-500">
-        All financial data sourced from Sandvik Q1 2025 Performance Report. MSEK = Millions of SEK, BSEK = Billions of
-        SEK.
-      </footer>
+interface FinancialGuidanceItemProps {
+  title: string
+  value: string
+  icon: React.ElementType
+}
+
+const FinancialGuidanceItem: React.FC<FinancialGuidanceItemProps> = ({ title, value, icon: Icon }) => (
+  <li className="flex items-start space-x-3 py-2.5">
+    <Icon className="h-5 w-5 text-brand-accent flex-shrink-0 mt-1" />
+    <div>
+      <span className="font-semibold text-slate-700 dark:text-slate-300">{title}:</span>
+      <span className="text-slate-600 dark:text-slate-400 ml-1.5">{value}</span>
+    </div>
+  </li>
+)
+
+const FinancialsSection: React.FC = () => {
+  // Data extracted from the provided PDF for Q1 2025
+  const consolidatedOverview = {
+    kpis: [
+      { title: "Order Intake", value: "32,763", unit: "MSEK", change: "+2%", changeType: "positive", icon: Briefcase },
+      { title: "Revenues", value: "29,301", unit: "MSEK", change: "+1%", changeType: "positive", icon: DollarSign },
+      {
+        title: "Adjusted EBITA",
+        value: "5,768",
+        unit: "MSEK",
+        change: "+9%",
+        changeType: "positive",
+        icon: TrendingUp,
+      },
+      {
+        title: "Adjusted EBITA Margin",
+        value: "19.7",
+        unit: "%",
+        change: "+1.5 ppts",
+        changeType: "positive",
+        icon: Percent,
+      },
+      {
+        title: "Adjusted EPS (diluted)",
+        value: "3.01",
+        unit: "SEK",
+        change: "+15%",
+        changeType: "positive",
+        icon: Landmark,
+      },
+      {
+        title: "Free Operating Cash Flow",
+        value: "3,809",
+        unit: "MSEK",
+        change: "+1%",
+        changeType: "positive",
+        icon: PiggyBank,
+      },
+      {
+        title: "Book-to-Bill Ratio",
+        value: "112",
+        unit: "%",
+        description: "Strong future revenue pipeline",
+        icon: BarChartHorizontalBig,
+      },
+    ],
+    summaryTable: [
+      { metric: "Order intake", q1_2024: "31,981", q1_2025: "32,763", change: "+2%" },
+      { metric: "Revenues", q1_2024: "29,002", q1_2025: "29,301", change: "+1%" },
+      { metric: "Adjusted EBITA", q1_2024: "5,281", q1_2025: "5,768", change: "+9%" },
+      { metric: "Adjusted EBITA margin (%)", q1_2024: "18.2%", q1_2025: "19.7%", change: "+1.5 ppts" },
+      { metric: "Profit for the period", q1_2024: "1,247", q1_2025: "3,736", change: "+200%" },
+      { metric: "Adjusted EPS, diluted (SEK)", q1_2024: "2.61", q1_2025: "3.01", change: "+15%" },
+      { metric: "Free operating cash flow", q1_2024: "3,770", q1_2025: "3,809", change: "+1%" },
+      { metric: "ROCE (%)", q1_2024: "14.0%", q1_2025: "15.4%", change: "+1.4 ppts" },
+      { metric: "Financial net debt/EBITDA", q1_2024: "1.3x", q1_2025: "1.1x", change: "-0.2x" },
+    ],
+    growthBridge: {
+      orderIntake: [
+        {
+          component: "Organic",
+          value: "+2%",
+          color: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+        },
+        {
+          component: "Structure",
+          value: "+1%",
+          color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+        },
+        { component: "Currency", value: "-1%", color: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200" },
+        {
+          component: "Total",
+          value: "+2%",
+          color: "bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-200 font-semibold",
+        },
+      ],
+      revenues: [
+        {
+          component: "Organic",
+          value: "+1%",
+          color: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+        },
+        {
+          component: "Structure",
+          value: "+1%",
+          color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+        },
+        { component: "Currency", value: "-1%", color: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200" },
+        {
+          component: "Total",
+          value: "+1%",
+          color: "bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-200 font-semibold",
+        },
+      ],
+    },
+    ebitaBridge: {
+      q1_2024: "5,281 MSEK",
+      organic: "+203 MSEK",
+      currency: "+237 MSEK",
+      structure: "+48 MSEK",
+      q1_2025: "5,768 MSEK",
+      margin_q1_2024: "18.2%",
+      margin_organic: "+0.6%",
+      margin_currency: "+1.0%",
+      margin_structure: "+0.0%",
+      margin_q1_2025: "19.7%",
+    },
+    narrative: [
+      "Profitability driven by stringent cost control and restructuring savings.",
+      "Currency accretion positively impacted margin by 100 bps.",
+      "Trailing 12-month cash conversion at an impressive 93%.",
+      "Fourth consecutive quarter with positive organic order intake.",
+    ],
+  }
+
+  const balanceSheet = {
+    kpis: [
+      { title: "Net Working Capital", value: "33.9", unit: "BSEK", description: "vs 36.6 BSEK Q1 2024", icon: Scale },
+      {
+        title: "NWC / Revenues (12m)",
+        value: "29.8",
+        unit: "%",
+        description: "Stable vs 29.7% Q1 2024",
+        icon: Percent,
+      },
+      { title: "Financial Net Debt", value: "31.2", unit: "BSEK", description: "vs 33.9 BSEK Q1 2024", icon: Banknote },
+      {
+        title: "Financial Net Debt / EBITDA",
+        value: "1.1x",
+        description: "Target <1.5x; vs 1.3x Q1 2024",
+        icon: ShieldCheck,
+      },
+      { title: "Capex", value: "1.0", unit: "BSEK", description: "117% of depreciation", icon: Building },
+      { title: "ROCE", value: "15.4", unit: "%", description: "vs 14.0% Q1 2024", icon: TrendingUp },
+    ],
+    narrative: [
+      "NWC reduction due to favorable FX effects and lower inventory volumes.",
+      "Proactive debt management strategy supported by strong free operating cash flow.",
+      "Hedging strategy effectively protects profitability from currency fluctuations on orders.",
+      "Normalized tax rate at 23.8%, consistent with guidance.",
+    ],
+  }
+
+  const guidanceOutlook = {
+    fy2025Guidance: [
+      { title: "Currency Effects (Q2 EBITA)", value: "SEK -600M (est.)", icon: ArrowRightLeft },
+      { title: "Capex (Cash)", value: "~SEK 5.0B", icon: Building },
+      { title: "Interest Net", value: "~SEK -0.8B", icon: Receipt },
+      { title: "Normalized Tax Rate", value: "23-25%", icon: Percent },
+    ],
+    longTermTargets: [
+      { title: "Growth (Organic + M&A)", value: "7% (fixed currency)", icon: TrendingUp },
+      { title: "Adjusted EBITA Margin", value: "20-22%", icon: Target },
+      { title: "Dividend Payout Ratio", value: "50% of Adj. EPS", icon: DollarSign },
+      { title: "Financial Net Debt/EBITDA", value: "<1.5x (excl. transformational M&A)", icon: ShieldCheck },
+    ],
+    narrative: ["Long-term targets defined in 2022 to guide performance through a business cycle."],
+  }
+
+  return (
+    <div className="space-y-8 p-4 md:p-6">
+      <h1 className="text-3xl font-bold text-brand-dark dark:text-slate-100 mb-6 flex items-center">
+        <FileText className="w-8 h-8 mr-3 text-brand-accent" />
+        Sandvik Group Financials - Q1 2025 Report Summary
+      </h1>
+
+      <Accordion type="multiple" defaultValue={["item-1", "item-2", "item-3"]} className="w-full">
+        {/* Section A: Consolidated Financial Overview */}
+        <AccordionItem value="item-1" className="border-b border-slate-200 dark:border-slate-700">
+          <AccordionTrigger className="text-xl font-semibold text-brand-dark dark:text-slate-200 hover:text-brand-accent dark:hover:text-brand-accent transition-colors py-4">
+            <div className="flex items-center">
+              <LineChart className="w-6 h-6 mr-3 text-brand-accent" />
+              A. Consolidated Financial Overview
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="pt-4 pb-6 space-y-6 bg-slate-50 dark:bg-slate-800/30 p-6 rounded-b-md">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6">
+              {consolidatedOverview.kpis.map((kpi) => (
+                <KpiCard key={kpi.title} {...kpi} />
+              ))}
+            </div>
+
+            <Card className="shadow-sm dark:bg-slate-800/50">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center text-slate-800 dark:text-slate-200">
+                  <ListChecks className="w-5 h-5 mr-2 text-brand-accent" />
+                  Financial Summary (Q1 2025 vs. Q1 2024)
+                </CardTitle>
+                <CardDescription className="dark:text-slate-400">
+                  All figures in MSEK unless otherwise stated.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-b-slate-300 dark:border-b-slate-700">
+                      <TableHead className="font-semibold text-slate-700 dark:text-slate-300">Metric</TableHead>
+                      <TableHead className="text-right font-semibold text-slate-700 dark:text-slate-300">
+                        Q1 2024
+                      </TableHead>
+                      <TableHead className="text-right font-semibold text-slate-700 dark:text-slate-300">
+                        Q1 2025
+                      </TableHead>
+                      <TableHead className="text-right font-semibold text-slate-700 dark:text-slate-300">
+                        Change (%)
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {consolidatedOverview.summaryTable.map((row, index) => (
+                      <TableRow
+                        key={row.metric}
+                        className={`border-slate-200 dark:border-slate-700 ${index % 2 === 0 ? "bg-white dark:bg-slate-800/30" : "bg-slate-100 dark:bg-slate-700/30"} hover:bg-slate-200/70 dark:hover:bg-slate-600/40 transition-colors`}
+                      >
+                        <TableCell className="font-medium text-slate-700 dark:text-slate-300 py-3">
+                          {row.metric}
+                        </TableCell>
+                        <TableCell className="text-right text-slate-600 dark:text-slate-400 py-3">
+                          {row.q1_2024}
+                        </TableCell>
+                        <TableCell className="text-right text-slate-600 dark:text-slate-400 py-3">
+                          {row.q1_2025}
+                        </TableCell>
+                        <TableCell className="text-right text-slate-600 dark:text-slate-400 py-3">
+                          {row.change}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card className="shadow-sm dark:bg-slate-800/50">
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center text-slate-800 dark:text-slate-200">
+                    <TrendingUp className="w-5 h-5 mr-2 text-brand-accent" />
+                    Order Intake & Revenue Growth Bridge (Q1 2025)
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <h4 className="font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Order Intake Growth:</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {consolidatedOverview.growthBridge.orderIntake.map((item) => (
+                        <Badge
+                          key={item.component}
+                          variant="outline"
+                          className={`px-2.5 py-1 text-xs border ${item.color.replace("bg-", "border-").replace("text-", "text-")} ${item.color}`}
+                        >
+                          {item.component}: {item.value}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Revenue Growth:</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {consolidatedOverview.growthBridge.revenues.map((item) => (
+                        <Badge
+                          key={item.component}
+                          variant="outline"
+                          className={`px-2.5 py-1 text-xs border ${item.color.replace("bg-", "border-").replace("text-", "text-")} ${item.color}`}
+                        >
+                          {item.component}: {item.value}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="shadow-sm dark:bg-slate-800/50">
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center text-slate-800 dark:text-slate-200">
+                    <BarChartHorizontalBig className="w-5 h-5 mr-2 text-brand-accent" />
+                    Adjusted EBITA Bridge (Q1 2025)
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="text-sm text-slate-600 dark:text-slate-400">
+                  <div className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1.5">
+                    <span className="font-semibold text-slate-700 dark:text-slate-300">Q1 2024 EBITA:</span>
+                    <span>
+                      {consolidatedOverview.ebitaBridge.q1_2024} (Margin:{" "}
+                      {consolidatedOverview.ebitaBridge.margin_q1_2024})
+                    </span>
+
+                    <span className="font-semibold text-green-600 dark:text-green-500">Organic:</span>
+                    <span>
+                      {consolidatedOverview.ebitaBridge.organic} (Margin:{" "}
+                      {consolidatedOverview.ebitaBridge.margin_organic})
+                    </span>
+
+                    <span className="font-semibold text-blue-600 dark:text-blue-500">Currency:</span>
+                    <span>
+                      {consolidatedOverview.ebitaBridge.currency} (Margin:{" "}
+                      {consolidatedOverview.ebitaBridge.margin_currency})
+                    </span>
+
+                    <span className="font-semibold text-purple-600 dark:text-purple-500">Structure:</span>
+                    <span>
+                      {consolidatedOverview.ebitaBridge.structure} (Margin:{" "}
+                      {consolidatedOverview.ebitaBridge.margin_structure})
+                    </span>
+
+                    <span className="font-semibold text-slate-700 dark:text-slate-300 pt-1 border-t border-slate-200 dark:border-slate-700 mt-1">
+                      Q1 2025 EBITA:
+                    </span>
+                    <span className="pt-1 border-t border-slate-200 dark:border-slate-700 mt-1">
+                      {consolidatedOverview.ebitaBridge.q1_2025} (Margin:{" "}
+                      {consolidatedOverview.ebitaBridge.margin_q1_2025})
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card className="bg-sky-50 dark:bg-sky-900/40 shadow-sm">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center text-sky-700 dark:text-sky-300">
+                  <Lightbulb className="w-5 h-5 mr-2 text-sky-500 dark:text-sky-400" />
+                  Key Takeaways
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ul className="list-disc list-inside space-y-1.5 text-sm text-slate-700 dark:text-slate-300">
+                  {consolidatedOverview.narrative.map((point, i) => (
+                    <li key={i}>{point}</li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          </AccordionContent>
+        </AccordionItem>
+
+        {/* Section B: Balance Sheet and Capital Efficiency */}
+        <AccordionItem value="item-2" className="border-b border-slate-200 dark:border-slate-700">
+          <AccordionTrigger className="text-xl font-semibold text-brand-dark dark:text-slate-200 hover:text-brand-accent dark:hover:text-brand-accent transition-colors py-4">
+            <div className="flex items-center">
+              <Scale className="w-6 h-6 mr-3 text-brand-accent" /> B. Balance Sheet & Capital Efficiency
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="pt-4 pb-6 space-y-6 bg-slate-50 dark:bg-slate-800/30 p-6 rounded-b-md">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+              {balanceSheet.kpis.map((kpi) => (
+                <KpiCard key={kpi.title} {...kpi} changeType="neutral" />
+              ))}
+            </div>
+            <Card className="bg-teal-50 dark:bg-teal-900/40 shadow-sm">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center text-teal-700 dark:text-teal-300">
+                  <Info className="w-5 h-5 mr-2 text-teal-500 dark:text-teal-400" />
+                  Highlights
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ul className="list-disc list-inside space-y-1.5 text-sm text-slate-700 dark:text-slate-300">
+                  {balanceSheet.narrative.map((point, i) => (
+                    <li key={i}>{point}</li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          </AccordionContent>
+        </AccordionItem>
+
+        {/* Section C: Financial Guidance and Outlook (FY 2025) */}
+        <AccordionItem value="item-3" className="border-b-0">
+          {" "}
+          {/* Removed border for last item */}
+          <AccordionTrigger className="text-xl font-semibold text-brand-dark dark:text-slate-200 hover:text-brand-accent dark:hover:text-brand-accent transition-colors py-4">
+            <div className="flex items-center">
+              <CalendarDays className="w-6 h-6 mr-3 text-brand-accent" /> C. Financial Guidance & Outlook (FY 2025)
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="pt-4 pb-6 space-y-6 bg-slate-50 dark:bg-slate-800/30 p-6 rounded-b-md">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card className="shadow-sm dark:bg-slate-800/50">
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center text-slate-800 dark:text-slate-200">
+                    <Target className="w-5 h-5 mr-2 text-brand-accent" />
+                    FY 2025 Specific Guidance
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ul className="space-y-1">
+                    {guidanceOutlook.fy2025Guidance.map((item) => (
+                      <FinancialGuidanceItem key={item.title} {...item} />
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+              <Card className="shadow-sm dark:bg-slate-800/50">
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center text-slate-800 dark:text-slate-200">
+                    <TrendingUp className="w-5 h-5 mr-2 text-brand-accent" />
+                    Long-Term Financial Targets
+                  </CardTitle>
+                  <CardDescription className="dark:text-slate-400">
+                    (Defined 2022, through a business cycle)
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ul className="space-y-1">
+                    {guidanceOutlook.longTermTargets.map((item) => (
+                      <FinancialGuidanceItem key={item.title} {...item} />
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            </div>
+            <Card className="bg-indigo-50 dark:bg-indigo-900/40 shadow-sm">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center text-indigo-700 dark:text-indigo-300">
+                  <Info className="w-5 h-5 mr-2 text-indigo-500 dark:text-indigo-400" />
+                  Context
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ul className="list-disc list-inside space-y-1.5 text-sm text-slate-700 dark:text-slate-300">
+                  {guidanceOutlook.narrative.map((point, i) => (
+                    <li key={i}>{point}</li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
     </div>
   )
 }
+
+export default FinancialsSection
