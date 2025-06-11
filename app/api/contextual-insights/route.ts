@@ -33,9 +33,15 @@ const AiGeneratedInsightSchema = z.object({
     .string()
     .optional()
     .describe("A brief, concrete actionable suggestion related to the insight, if applicable (max 15 words)."),
+  sourcesCheckedCount: z
+    .number()
+    .optional()
+    .describe(
+      "Estimate the number of distinct categories of data sources (e.g., market reports, internal data, news articles) typically synthesized to generate this insight.",
+    ),
 })
 
-// Type for API insights (includes iconName as string, compatible with frontend's InsightCardProps after mapping)
+// Type for API insights
 type ApiInsight = {
   iconName: string
   title: string
@@ -44,13 +50,15 @@ type ApiInsight = {
   badgeVariant?: "default" | "secondary" | "destructive" | "outline"
   badgeClassName?: string
   source: string
-  confidence: number | string // Can be a number (e.g. 85) or a string (e.g. "Confirmed", "AI Generated (90%)")
+  confidence: number | string
   isAI?: boolean
   actionLink?: {
     href: string
     text: string
     iconName: string
   }
+  dataTimestamp?: string // ISO 8601 string
+  sourcesCheckedCount?: number
 }
 
 // Predefined insights database
@@ -65,6 +73,7 @@ const insightsDatabase: Record<string, ApiInsight[]> = {
       badgeVariant: "secondary",
       source: "Internal Sales Data, MarketWatch Q3 Report",
       confidence: 90,
+      dataTimestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days ago
     },
     {
       iconName: "AlertTriangle",
@@ -76,6 +85,7 @@ const insightsDatabase: Record<string, ApiInsight[]> = {
       source: "Global Logistics Monitoring Platform",
       confidence: 95,
       actionLink: { href: "#", text: "View Mitigation Plan", iconName: "FileText" },
+      dataTimestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
     },
   ],
   manufacturing: [
@@ -89,6 +99,7 @@ const insightsDatabase: Record<string, ApiInsight[]> = {
       badgeClassName: "bg-green-500 text-white",
       source: "Gimo Plant SCADA System & MES",
       confidence: 98,
+      dataTimestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), // 5 days ago
     },
     {
       iconName: "Settings",
@@ -98,6 +109,7 @@ const insightsDatabase: Record<string, ApiInsight[]> = {
       badgeText: "Operational Note",
       source: "Project Management Office Updates",
       confidence: "Confirmed",
+      dataTimestamp: new Date().toISOString(), // Today
     },
   ],
   materials: [
@@ -110,6 +122,7 @@ const insightsDatabase: Record<string, ApiInsight[]> = {
       badgeVariant: "destructive",
       source: "LME, S&P Global Commodity Insights",
       confidence: 88,
+      dataTimestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days ago
     },
   ],
   logistics: [
@@ -123,6 +136,7 @@ const insightsDatabase: Record<string, ApiInsight[]> = {
       badgeClassName: "bg-sky-500 text-white",
       source: "Port Authority Data, Freight Forwarder Intel",
       confidence: 85,
+      dataTimestamp: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(), // 12 hours ago
     },
     {
       iconName: "TrendingUp",
@@ -132,6 +146,7 @@ const insightsDatabase: Record<string, ApiInsight[]> = {
       badgeText: "Capacity Update",
       source: "IATA, Freightos Air Index",
       confidence: 80,
+      dataTimestamp: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString(), // 6 days ago
     },
   ],
   simulations: [
@@ -143,6 +158,7 @@ const insightsDatabase: Record<string, ApiInsight[]> = {
       badgeText: "Simulation Complete",
       source: "Supply Chain Modeler Pro v2.1",
       confidence: "Modelled (92% fit)",
+      dataTimestamp: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(), // 10 days ago
     },
     {
       iconName: "Lightbulb",
@@ -153,6 +169,7 @@ const insightsDatabase: Record<string, ApiInsight[]> = {
       source: "Analytics & Foresight Team",
       confidence: "Ready",
       actionLink: { href: "#", text: "Configure Scenario", iconName: "Play" },
+      dataTimestamp: new Date().toISOString(), // Today
     },
   ],
 }
@@ -166,6 +183,7 @@ export async function GET(request: NextRequest) {
   }
 
   const dynamicInsights: ApiInsight[] = [...insightsDatabase[tab]]
+  const currentTimestamp = new Date().toISOString()
 
   // AI-generated insight for 'overview' tab
   if (tab === "overview") {
@@ -173,7 +191,7 @@ export async function GET(request: NextRequest) {
       const { object: aiData } = await generateObject({
         model: openai("gpt-4o"),
         schema: AiGeneratedInsightSchema,
-        prompt: `You are a strategic analyst for Sandvik. Based on current global economic trends (e.g., inflation, interest rates, energy costs), recent Sandvik performance (SMRS growth in APAC, SMMS headwinds in Europe), and geopolitical factors (e.g., Red Sea disruptions, regional conflicts), provide one highly relevant and actionable strategic insight for Sandvik's executive team for the next quarter. The insight should be concise and impactful.`,
+        prompt: `You are a strategic analyst for Sandvik. Based on current global economic trends (e.g., inflation, interest rates, energy costs), recent Sandvik performance (SMRS growth in APAC, SMMS headwinds in Europe), and geopolitical factors (e.g., Red Sea disruptions, regional conflicts), provide one highly relevant and actionable strategic insight for Sandvik's executive team for the next quarter. The insight should be concise and impactful. Additionally, please state the number of distinct categories of information or types of data sources (e.g., financial reports, industry news, internal metrics, geopolitical analysis) that would typically be synthesized to produce an insight like this. Assign this to 'sourcesCheckedCount'.`,
       })
 
       dynamicInsights.push({
@@ -191,6 +209,8 @@ export async function GET(request: NextRequest) {
         actionLink: aiData.actionableSuggestion
           ? { href: "#", text: "Explore Suggestion", iconName: "ArrowRight" }
           : undefined,
+        dataTimestamp: currentTimestamp,
+        sourcesCheckedCount: aiData.sourcesCheckedCount,
       })
     } catch (error) {
       console.error("AI insight generation failed for 'overview' tab:", error)
@@ -203,6 +223,7 @@ export async function GET(request: NextRequest) {
         source: "System AI Module",
         confidence: "N/A",
         isAI: true,
+        dataTimestamp: currentTimestamp,
       })
     }
   }
@@ -213,7 +234,7 @@ export async function GET(request: NextRequest) {
       const { object: aiMaterialData } = await generateObject({
         model: openai("gpt-4o"),
         schema: AiGeneratedInsightSchema,
-        prompt: `You are a supply chain risk analyst for Sandvik. Considering Sandvik's critical materials: Tungsten (vertically integrated, WBH Austria), Cobalt (external sourcing, high risk from DRC), and Specialty Steel (external sourcing post-Alleima). Analyze recent commodity market trends (e.g., Cobalt price volatility, steel tariffs) and provide one specific, actionable insight for optimizing Sandvik's critical material sourcing strategy or mitigating risk in the next 6 months.`,
+        prompt: `You are a supply chain risk analyst for Sandvik. Considering Sandvik's critical materials: Tungsten (vertically integrated, WBH Austria), Cobalt (external sourcing, high risk from DRC), and Specialty Steel (external sourcing post-Alleima). Analyze recent commodity market trends (e.g., Cobalt price volatility, steel tariffs) and provide one specific, actionable insight for optimizing Sandvik's critical material sourcing strategy or mitigating risk in the next 6 months. Additionally, please state the number of distinct categories of information or types of data sources (e.g., commodity indices, supplier reports, geopolitical risk assessments) that would typically be synthesized to produce an insight like this. Assign this to 'sourcesCheckedCount'.`,
       })
 
       dynamicInsights.push({
@@ -231,6 +252,8 @@ export async function GET(request: NextRequest) {
         actionLink: aiMaterialData.actionableSuggestion
           ? { href: "#", text: "Review Sourcing Options", iconName: "ListChecks" }
           : undefined,
+        dataTimestamp: currentTimestamp,
+        sourcesCheckedCount: aiMaterialData.sourcesCheckedCount,
       })
     } catch (error) {
       console.error("AI insight generation failed for 'materials' tab:", error)
@@ -243,6 +266,7 @@ export async function GET(request: NextRequest) {
         source: "System AI Module",
         confidence: "N/A",
         isAI: true,
+        dataTimestamp: currentTimestamp,
       })
     }
   }
@@ -253,7 +277,7 @@ export async function GET(request: NextRequest) {
       const { object: aiData } = await generateObject({
         model: openai("gpt-4o"),
         schema: AiGeneratedInsightSchema,
-        prompt: `You are a manufacturing operations analyst for Sandvik. Analyze Sandvik's global manufacturing footprint, which includes key sites like Gimo, Sweden (an Industry 4.0 Lighthouse) and Mebane, NC (a green factory). Consider the ongoing SMMS regionalization strategy. Provide one specific, actionable insight related to manufacturing efficiency, potential bottlenecks, or a new technological opportunity (e.g., additive manufacturing, predictive maintenance) for the next quarter.`,
+        prompt: `You are a manufacturing operations analyst for Sandvik. Analyze Sandvik's global manufacturing footprint, which includes key sites like Gimo, Sweden (an Industry 4.0 Lighthouse) and Mebane, NC (a green factory). Consider the ongoing SMMS regionalization strategy. Provide one specific, actionable insight related to manufacturing efficiency, potential bottlenecks, or a new technological opportunity (e.g., additive manufacturing, predictive maintenance) for the next quarter. Additionally, please state the number of distinct categories of information or types of data sources (e.g., production data, maintenance logs, industry best practices, new technology reports) that would typically be synthesized to produce an insight like this. Assign this to 'sourcesCheckedCount'.`,
       })
 
       dynamicInsights.push({
@@ -271,6 +295,8 @@ export async function GET(request: NextRequest) {
         actionLink: aiData.actionableSuggestion
           ? { href: "#", text: "Review Operations Data", iconName: "BarChart3" }
           : undefined,
+        dataTimestamp: currentTimestamp,
+        sourcesCheckedCount: aiData.sourcesCheckedCount,
       })
     } catch (error) {
       console.error("AI insight generation failed for 'manufacturing' tab:", error)
@@ -283,6 +309,7 @@ export async function GET(request: NextRequest) {
         source: "System AI Module",
         confidence: "N/A",
         isAI: true,
+        dataTimestamp: currentTimestamp,
       })
     }
   }
@@ -293,7 +320,7 @@ export async function GET(request: NextRequest) {
       const { object: aiData } = await generateObject({
         model: openai("gpt-4o"),
         schema: AiGeneratedInsightSchema,
-        prompt: `You are a logistics and trade compliance expert for Sandvik. Given the current logistics challenges, including Red Sea shipping disruptions, US reciprocal tariffs on EU exports, and volatile fuel prices, provide one specific, actionable insight to optimize Sandvik's logistics network. This could involve route optimization, a strategic modal shift, or a warehousing strategy to mitigate risks and reduce costs in the next 6 months.`,
+        prompt: `You are a logistics and trade compliance expert for Sandvik. Given the current logistics challenges, including Red Sea shipping disruptions, US reciprocal tariffs on EU exports, and volatile fuel prices, provide one specific, actionable insight to optimize Sandvik's logistics network. This could involve route optimization, a strategic modal shift, or a warehousing strategy to mitigate risks and reduce costs in the next 6 months. Additionally, please state the number of distinct categories of information or types of data sources (e.g., shipping rates, customs data, fuel price trends, port congestion reports) that would typically be synthesized to produce an insight like this. Assign this to 'sourcesCheckedCount'.`,
       })
 
       dynamicInsights.push({
@@ -311,6 +338,8 @@ export async function GET(request: NextRequest) {
         actionLink: aiData.actionableSuggestion
           ? { href: "#", text: "Analyze Logistics Data", iconName: "TrendingUp" }
           : undefined,
+        dataTimestamp: currentTimestamp,
+        sourcesCheckedCount: aiData.sourcesCheckedCount,
       })
     } catch (error) {
       console.error("AI insight generation failed for 'logistics' tab:", error)
@@ -323,12 +352,10 @@ export async function GET(request: NextRequest) {
         source: "System AI Module",
         confidence: "N/A",
         isAI: true,
+        dataTimestamp: currentTimestamp,
       })
     }
   }
 
   return NextResponse.json({ insights: dynamicInsights })
 }
-
-// To test this API, you can navigate to /api/contextual-insights?tab=overview (or other tab names) in your browser
-// Ensure your OPENAI_API_KEY is set in your environment variables.
