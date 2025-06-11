@@ -118,6 +118,36 @@ const insightsDatabase: Record<string, ApiInsight[]> = {
       timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
     },
   ],
+  financials: [
+    {
+      iconName: "DollarSign",
+      title: "Q3 Earnings Highlights",
+      description:
+        "Sandvik reported a 4.1% increase in Net Sales YTD, reaching SEK 95.2B. Operating Profit (EBITA) grew by 6.8% to SEK 18.5B, with an adjusted operating margin of 19.4%.",
+      badgeText: "Financial Update",
+      badgeVariant: "default",
+      badgeClassName: "bg-green-500 text-white",
+      source: "Sandvik Q3 Interim Report",
+      confidence: "Confirmed",
+      actionLink: { href: "#", text: "View Full Report", iconName: "FileText" },
+      timestamp: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days ago
+      detailedSources: [
+        { name: "Sandvik Q3 Interim Report", contribution: "Provides official figures for sales, profit, and margin." },
+        { name: "Investor Presentation", contribution: "Offers commentary and context on financial performance." },
+      ],
+      sourcesCheckedCount: 2,
+    },
+    {
+      iconName: "TrendingUp",
+      title: "SMMS Margin Improvement",
+      description:
+        "The Manufacturing and Machining Solutions (SMMS) segment saw a notable margin improvement of 1.2pp in Q3, attributed to successful cost optimization programs and favorable product mix.",
+      badgeText: "Segment Performance",
+      source: "Internal Financial Analysis",
+      confidence: 92,
+      timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), // 5 days ago
+    },
+  ],
   manufacturing: [
     {
       iconName: "Zap",
@@ -251,6 +281,52 @@ export async function GET(request: NextRequest) {
         iconName: "AlertTriangle",
         title: "AI Insight Generation Failed",
         description: "Could not generate an AI-powered strategic insight at this time. Please try again later.",
+        badgeText: "Error",
+        badgeVariant: "destructive",
+        source: "System AI Module",
+        confidence: "N/A",
+        isAI: true,
+        timestamp: currentTimestamp,
+      })
+    }
+  }
+
+  // Add AI-generated insight for 'financials' tab
+  if (tab === "financials") {
+    try {
+      const { object: aiFinancialData } = await generateObject({
+        model: openai("gpt-4o"),
+        schema: AiGeneratedInsightSchema,
+        prompt: `You are a financial analyst for Sandvik. Based on Sandvik's latest financial reports (e.g., Q3 performance with Net Sales SEK 95.2B, EBITA SEK 18.5B) and current market conditions, provide one key financial insight or trend. ${basePromptDetails}`,
+      })
+
+      dynamicInsights.push({
+        iconName: "Brain",
+        title: `AI: ${aiFinancialData.title}`,
+        description:
+          aiFinancialData.description +
+          (aiFinancialData.actionableSuggestion
+            ? ` Actionable Suggestion: ${aiFinancialData.actionableSuggestion}`
+            : ""),
+        badgeText: aiFinancialData.badgeText,
+        badgeVariant: "default",
+        badgeClassName: "bg-emerald-500 text-white",
+        source: "AI Financial Analysis Engine",
+        confidence: `AI Generated (${aiFinancialData.confidence}%)`,
+        isAI: true,
+        actionLink: aiFinancialData.actionableSuggestion
+          ? { href: "#", text: "Explore Financial Data", iconName: "BarChart3" }
+          : undefined,
+        timestamp: currentTimestamp,
+        detailedSources: aiFinancialData.detailedSources,
+        sourcesCheckedCount: aiFinancialData.detailedSources?.length || aiFinancialData.sourcesCheckedCount,
+      })
+    } catch (error) {
+      console.error("AI insight generation failed for 'financials' tab:", error)
+      dynamicInsights.push({
+        iconName: "AlertTriangle",
+        title: "AI Financial Insight Failed",
+        description: "Could not generate an AI-powered financial insight. Please check system logs.",
         badgeText: "Error",
         badgeVariant: "destructive",
         source: "System AI Module",

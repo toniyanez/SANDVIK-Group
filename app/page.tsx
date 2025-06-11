@@ -1,9 +1,25 @@
 "use client"
 
+import type React from "react"
+
 import { useState, useEffect } from "react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
-import { Building2, Globe, Truck, AlertTriangle, Play, LogOut, User, Bell, HelpCircle, Settings } from "lucide-react"
+import {
+  Building2,
+  Globe,
+  Truck,
+  AlertTriangle,
+  Play,
+  LogOut,
+  User,
+  Bell,
+  HelpCircle,
+  Settings,
+  DollarSign,
+  ChevronDown,
+  ChevronRight,
+} from "lucide-react" // Added DollarSign, ChevronDown, ChevronRight
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import {
   DropdownMenu,
@@ -20,10 +36,31 @@ import ManufacturingFootprint from "@/app/components/manufacturing-footprint"
 import CriticalMaterials from "@/app/components/critical-materials"
 import SupplyChainLogistics from "@/app/components/supply-chain-logistics"
 import SupplyChainSimulations from "@/app/components/supply-chain-simulations"
-import ContextualInsightsPanel from "@/app/components/contextual-insights-panel" // New component
+import ContextualInsightsPanel from "@/app/components/contextual-insights-panel"
+import FinancialsSection from "@/app/components/financials-section" // New import
 
-const navItems = [
-  { id: "overview", label: "Overview", icon: Globe },
+// Update navItems structure
+interface NavSubItem {
+  id: string
+  label: string
+  icon: React.ElementType
+  parentId: string
+}
+
+interface NavItem {
+  id: string
+  label: string
+  icon: React.ElementType
+  subItems?: NavSubItem[]
+}
+
+const navItems: NavItem[] = [
+  {
+    id: "overview",
+    label: "Overview",
+    icon: Globe,
+    subItems: [{ id: "financials", label: "Financials", icon: DollarSign, parentId: "overview" }],
+  },
   { id: "manufacturing", label: "Manufacturing", icon: Building2 },
   { id: "materials", label: "Critical Materials", icon: AlertTriangle },
   { id: "logistics", label: "Logistics", icon: Truck },
@@ -36,22 +73,42 @@ export default function StrategicCockpitPage() {
   const TOTAL_HEADER_HEIGHT_PX = MAIN_HEADER_HEIGHT_PX + SECONDARY_HEADER_HEIGHT_PX
   const RIGHT_PANEL_WIDTH_PX = 288 // 72 * 4 (w-72)
 
-  const [activeTab, setActiveTab] = useState("overview")
+  // Replace `activeTab` state with `activeView` and `expandedMainTab`
+  // const [activeTab, setActiveTab] = useState("overview")
+  const [activeView, setActiveView] = useState("overview")
+  const [expandedMainTab, setExpandedMainTab] = useState<string | null>("overview") // Keep overview expanded by default
+
   const [secondaryHeaderText, setSecondaryHeaderText] = useState("")
 
+  // Update useEffect for secondaryHeaderText
   useEffect(() => {
-    const currentNavItem = navItems.find((item) => item.id === activeTab)
-    setSecondaryHeaderText(
-      currentNavItem
-        ? `${currentNavItem.label} View - Sandvik Group Supply Chain Data`
-        : "Sandvik Group Supply Chain Data",
+    let headerText = "Sandvik Group Supply Chain Data"
+    const currentMainItem = navItems.find(
+      (item) =>
+        item.id === (activeView === "financials" ? "overview" : activeView) ||
+        item.subItems?.some((sub) => sub.id === activeView),
     )
-  }, [activeTab])
 
+    if (currentMainItem) {
+      if (currentMainItem.subItems?.some((sub) => sub.id === activeView)) {
+        const currentSubItem = currentMainItem.subItems.find((sub) => sub.id === activeView)
+        if (currentSubItem) {
+          headerText = `${currentMainItem.label} > ${currentSubItem.label} View - Sandvik Group Supply Chain Data`
+        }
+      } else {
+        headerText = `${currentMainItem.label} View - Sandvik Group Supply Chain Data`
+      }
+    }
+    setSecondaryHeaderText(headerText)
+  }, [activeView])
+
+  // Update renderContent function
   const renderContent = () => {
-    switch (activeTab) {
+    switch (activeView) {
       case "overview":
         return <SandvikOverview />
+      case "financials":
+        return <FinancialsSection /> // New case
       case "manufacturing":
         return <ManufacturingFootprint />
       case "materials":
@@ -197,31 +254,73 @@ export default function StrategicCockpitPage() {
             >
               <div className="flex-grow px-4 pt-4">
                 <TooltipProvider delayDuration={0}>
-                  <nav className="space-y-2">
+                  {/* Update sidebar rendering logic within the return statement's <aside> section: */}
+                  {/* Replace the existing <nav> block with this new one: */}
+                  <nav className="space-y-1">
+                    {" "}
+                    {/* Adjusted spacing */}
                     {navItems.map((item) => {
-                      const isActive = activeTab === item.id
+                      const isMainActive =
+                        item.id === activeView ||
+                        (item.subItems?.some((sub) => sub.id === activeView) && item.id === expandedMainTab)
+                      const isExpanded = expandedMainTab === item.id
+
                       return (
-                        <Tooltip key={item.id}>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              onClick={() => setActiveTab(item.id)}
-                              className={`w-full justify-start items-center space-x-3 py-2.5 rounded-lg transition-all duration-200 ease-in-out
-                        ${
-                          isActive
-                            ? "bg-brand-accent text-white font-semibold"
-                            : "text-slate-300 hover:bg-brand-dark-secondary hover:text-white"
-                        }
+                        <div key={item.id}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                onClick={() => {
+                                  setActiveView(item.id) // Clicking main item sets its view
+                                  setExpandedMainTab(item.id === expandedMainTab && item.subItems ? null : item.id) // Toggle expansion
+                                }}
+                                className={`w-full justify-start items-center space-x-3 py-2.5 rounded-lg transition-all duration-200 ease-in-out
+                ${isMainActive && !item.subItems?.some((sub) => sub.id === activeView) ? "bg-brand-accent text-white font-semibold" : "text-slate-300 hover:bg-brand-dark-secondary hover:text-white"}
+              `}
+                              >
+                                <item.icon className="h-5 w-5 flex-shrink-0" />
+                                <span className="text-sm flex-1 text-left">{item.label}</span>
+                                {item.subItems &&
+                                  (isExpanded ? (
+                                    <ChevronDown className="h-4 w-4 text-slate-400" />
+                                  ) : (
+                                    <ChevronRight className="h-4 w-4 text-slate-400" />
+                                  ))}
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="right" className="bg-slate-900 text-white border-slate-700">
+                              <p>{item.label}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                          {isExpanded && item.subItems && (
+                            <div className="pl-4 mt-1 space-y-1">
+                              {item.subItems.map((subItem) => {
+                                const isSubActive = subItem.id === activeView
+                                return (
+                                  <Tooltip key={subItem.id}>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        onClick={() => setActiveView(subItem.id)}
+                                        className={`w-full justify-start items-center space-x-3 py-2 rounded-lg transition-all duration-200 ease-in-out
+                        ${isSubActive ? "bg-brand-accent text-white font-semibold" : "text-slate-400 hover:bg-brand-dark-secondary hover:text-slate-200"}
                       `}
-                            >
-                              <item.icon className="h-5 w-5" />
-                              <span className="text-sm">{item.label}</span>
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent side="right" className="bg-slate-900 text-white border-slate-700">
-                            <p>{item.label}</p>
-                          </TooltipContent>
-                        </Tooltip>
+                                      >
+                                        <subItem.icon className="h-4 w-4 flex-shrink-0 ml-1" />{" "}
+                                        {/* Adjusted icon size and margin */}
+                                        <span className="text-xs">{subItem.label}</span> {/* Adjusted text size */}
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="right" className="bg-slate-900 text-white border-slate-700">
+                                      <p>{subItem.label}</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                )
+                              })}
+                            </div>
+                          )}
+                        </div>
                       )
                     })}
                   </nav>
@@ -242,7 +341,9 @@ export default function StrategicCockpitPage() {
                 height: `calc(100vh - ${TOTAL_HEADER_HEIGHT_PX}px)`,
               }}
             >
-              <ContextualInsightsPanel activeTab={activeTab} />
+              {/* In the ContextualInsightsPanel component usage: */}
+              {/* Change `activeTab={activeTab}` to `activeTab={activeView}` */}
+              <ContextualInsightsPanel activeTab={activeView} />
             </aside>
           </div>
         </div>
