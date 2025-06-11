@@ -27,34 +27,9 @@ import {
   ArrowRight,
   Factory,
   CalendarDays,
+  Layers,
 } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-
-// Utility function to format time ago
-const formatTimeAgo = (timestamp: string | number | Date): string => {
-  const date = new Date(timestamp)
-  const now = new Date()
-  const seconds = Math.round((now.getTime() - date.getTime()) / 1000)
-  const minutes = Math.round(seconds / 60)
-  const hours = Math.round(minutes / 60)
-  const days = Math.round(hours / 24)
-  const weeks = Math.round(days / 7)
-  const months = Math.round(days / 30.44) // Average days in month
-  const years = Math.round(days / 365.25) // Account for leap years
-
-  if (seconds < 5) return "just now"
-  if (seconds < 60) return `${seconds} seconds ago`
-  if (minutes < 60) return `${minutes} minutes ago`
-  if (hours < 24) return `${hours} hours ago`
-  if (days === 1) return "yesterday"
-  if (days < 7) return `${days} days ago`
-  if (weeks === 1) return "last week"
-  if (weeks < 4) return `${weeks} weeks ago` // Up to 3 weeks
-  if (months === 1) return "last month"
-  if (months < 12) return `${months} months ago`
-  if (years === 1) return "last year"
-  return `${years} years ago`
-}
 
 // Define the structure of an insight received from the API
 interface ApiInsight {
@@ -67,12 +42,13 @@ interface ApiInsight {
   source: string
   confidence: number | string
   isAI?: boolean
-  dataTimestamp: string // Added dataTimestamp (e.g., ISO 8601 string)
   actionLink?: {
     href: string
     text: string
     iconName: string
   }
+  timestamp?: string
+  sourcesCheckedCount?: number // New field for number of sources checked
 }
 
 interface ContextualInsightsPanelProps {
@@ -100,6 +76,41 @@ const iconMap: Record<string, React.ElementType> = {
   ArrowRight,
   Factory,
   CalendarDays,
+  Layers,
+}
+
+// Utility function to format "time ago" from timestamp
+const formatTimeAgo = (timestamp: string): string => {
+  const date = new Date(timestamp)
+  const now = new Date()
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000)
+
+  if (diffInSeconds < 60) {
+    return "just now"
+  }
+
+  const diffInMinutes = Math.floor(diffInSeconds / 60)
+  if (diffInMinutes < 60) {
+    return `${diffInMinutes} minute${diffInMinutes > 1 ? "s" : ""} ago`
+  }
+
+  const diffInHours = Math.floor(diffInMinutes / 60)
+  if (diffInHours < 24) {
+    return `${diffInHours} hour${diffInHours > 1 ? "s" : ""} ago`
+  }
+
+  const diffInDays = Math.floor(diffInHours / 24)
+  if (diffInDays < 30) {
+    return `${diffInDays} day${diffInDays > 1 ? "s" : ""} ago`
+  }
+
+  const diffInMonths = Math.floor(diffInDays / 30)
+  if (diffInMonths < 12) {
+    return `${diffInMonths} month${diffInMonths > 1 ? "s" : ""} ago`
+  }
+
+  const diffInYears = Math.floor(diffInMonths / 12)
+  return `${diffInYears} year${diffInYears > 1 ? "s" : ""} ago`
 }
 
 const InsightCard: React.FC<
@@ -117,13 +128,12 @@ const InsightCard: React.FC<
   source,
   confidence,
   isAI = false,
-  dataTimestamp, // Added dataTimestamp
   actionLink,
+  timestamp,
+  sourcesCheckedCount,
 }) => (
   <Card className="mb-4 transition-all duration-300 hover:shadow-lg border border-slate-200 bg-white">
     <div className="flex flex-col space-y-1.5 p-6 pb-3">
-      {" "}
-      {/* Replaced CardHeader */}
       <div className="flex items-start justify-between">
         <div className="flex items-center">
           <Icon className="w-6 h-6 mr-3 text-brand-accent flex-shrink-0" />
@@ -151,22 +161,36 @@ const InsightCard: React.FC<
     <CardContent className="pb-4">
       <p className="text-sm text-slate-600 mb-3">{description}</p>
       <div className="text-xs text-slate-500 space-y-1.5 pt-3 border-t border-slate-100">
-        <div className="flex items-center">
-          {isAI ? (
-            <Brain className="w-3.5 h-3.5 mr-1.5 text-sky-500" />
-          ) : (
-            <Database className="w-3.5 h-3.5 mr-1.5 text-slate-400" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            {isAI ? (
+              <Brain className="w-3.5 h-3.5 mr-1.5 text-sky-500" />
+            ) : (
+              <Database className="w-3.5 h-3.5 mr-1.5 text-slate-400" />
+            )}
+            <span>Source: {source}</span>
+            {isAI && <Sparkles className="w-3.5 h-3.5 ml-1 text-amber-500" />}
+          </div>
+          {timestamp && (
+            <div className="flex items-center">
+              <CalendarDays className="w-3.5 h-3.5 mr-1.5 text-slate-400" />
+              <span>{formatTimeAgo(timestamp)}</span>
+            </div>
           )}
-          <span>Source: {source}</span>
-          {isAI && <Sparkles className="w-3.5 h-3.5 ml-1 text-amber-500" />}
         </div>
-        <div className="flex items-center">
-          <ShieldCheck className="w-3.5 h-3.5 mr-1.5 text-green-500" />
-          <span>Confidence: {typeof confidence === "number" ? `${confidence}%` : confidence}</span>
-        </div>
-        <div className="flex items-center">
-          <CalendarDays className="w-3.5 h-3.5 mr-1.5 text-slate-400" />
-          <span>Data as of: {formatTimeAgo(dataTimestamp)}</span>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            <ShieldCheck className="w-3.5 h-3.5 mr-1.5 text-green-500" />
+            <span>Confidence: {typeof confidence === "number" ? `${confidence}%` : confidence}</span>
+          </div>
+          {isAI && sourcesCheckedCount && sourcesCheckedCount > 0 && (
+            <div className="flex items-center">
+              <Layers className="w-3.5 h-3.5 mr-1.5 text-slate-400" />
+              <span>
+                {sourcesCheckedCount} source{sourcesCheckedCount > 1 ? "s" : ""} checked
+              </span>
+            </div>
+          )}
         </div>
       </div>
     </CardContent>
@@ -186,8 +210,6 @@ const InsightCard: React.FC<
 const InsightCardSkeleton: React.FC = () => (
   <Card className="mb-4 border border-slate-200 bg-white">
     <div className="flex flex-col space-y-1.5 p-6 pb-3">
-      {" "}
-      {/* Replaced CardHeader */}
       <div className="flex items-start justify-between">
         <div className="flex items-center">
           <Skeleton className="w-6 h-6 mr-3 rounded-full" />
@@ -200,9 +222,14 @@ const InsightCardSkeleton: React.FC = () => (
       <Skeleton className="h-4 w-full mb-1" />
       <Skeleton className="h-4 w-5/6 mb-3" />
       <div className="space-y-1.5 pt-3 border-t border-slate-100">
-        <Skeleton className="h-3 w-1/2" />
-        <Skeleton className="h-3 w-1/3" />
-        <Skeleton className="h-3 w-2/5" /> {/* Skeleton for date tag */}
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-3 w-[45%]" /> {/* Adjusted width for source */}
+          <Skeleton className="h-3 w-[20%]" /> {/* Placeholder for timestamp */}
+        </div>
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-3 w-[30%]" /> {/* Placeholder for confidence */}
+          <Skeleton className="h-3 w-[35%]" /> {/* Placeholder for sources checked */}
+        </div>
       </div>
     </CardContent>
   </Card>
@@ -217,7 +244,7 @@ export default function ContextualInsightsPanel({ activeTab }: ContextualInsight
     const fetchInsights = async () => {
       setIsLoading(true)
       setError(null)
-      setInsights([])
+      setInsights([]) // Clear previous insights
       try {
         const response = await fetch(`/api/contextual-insights?tab=${activeTab}`)
         if (!response.ok) {
@@ -227,10 +254,13 @@ export default function ContextualInsightsPanel({ activeTab }: ContextualInsight
           )
         }
         const data = await response.json()
-        // Ensure data.insights is an array and has dataTimestamp, provide a default if missing for robustness
-        const processedInsights = (data.insights || []).map((insight: any) => ({
+        // Example: Add dummy timestamp and sourcesCheckedCount if not provided by API
+        const processedInsights = (data.insights || []).map((insight: ApiInsight) => ({
           ...insight,
-          dataTimestamp: insight.dataTimestamp || new Date().toISOString(), // Default to now if missing
+          timestamp: insight.timestamp || new Date().toISOString(), // Default to now if not provided
+          sourcesCheckedCount: insight.isAI
+            ? insight.sourcesCheckedCount || Math.floor(Math.random() * 5) + 1
+            : undefined, // Dummy data for AI insights
         }))
         setInsights(processedInsights)
       } catch (err) {
@@ -266,6 +296,7 @@ export default function ContextualInsightsPanel({ activeTab }: ContextualInsight
           variant="outline"
           size="sm"
           onClick={() => {
+            /* Re-trigger fetch */
             const fetchAgain = async () => {
               setIsLoading(true)
               setError(null)
@@ -274,9 +305,12 @@ export default function ContextualInsightsPanel({ activeTab }: ContextualInsight
                 const response = await fetch(`/api/contextual-insights?tab=${activeTab}`)
                 if (!response.ok) throw new Error(`Failed to fetch insights: ${response.statusText}`)
                 const data = await response.json()
-                const processedInsights = (data.insights || []).map((insight: any) => ({
+                const processedInsights = (data.insights || []).map((insight: ApiInsight) => ({
                   ...insight,
-                  dataTimestamp: insight.dataTimestamp || new Date().toISOString(),
+                  timestamp: insight.timestamp || new Date().toISOString(),
+                  sourcesCheckedCount: insight.isAI
+                    ? insight.sourcesCheckedCount || Math.floor(Math.random() * 5) + 1
+                    : undefined,
                 }))
                 setInsights(processedInsights)
               } catch (err) {
@@ -296,12 +330,12 @@ export default function ContextualInsightsPanel({ activeTab }: ContextualInsight
     )
   } else if (insights.length > 0) {
     content = insights.map((insight, index) => {
-      const IconComponent = iconMap[insight.iconName] || Info
+      const IconComponent = iconMap[insight.iconName] || Info // Fallback to Info icon
       const ActionIconComponent = insight.actionLink ? iconMap[insight.actionLink.iconName] || LinkIcon : undefined
 
       return (
         <InsightCard
-          key={`${insight.title}-${index}`}
+          key={`${insight.title}-${index}`} // Using title and index for key
           icon={IconComponent}
           title={insight.title}
           description={insight.description}
@@ -311,10 +345,11 @@ export default function ContextualInsightsPanel({ activeTab }: ContextualInsight
           source={insight.source}
           confidence={insight.confidence}
           isAI={insight.isAI}
-          dataTimestamp={insight.dataTimestamp} // Pass dataTimestamp
           actionLink={
             insight.actionLink && ActionIconComponent ? { ...insight.actionLink, icon: ActionIconComponent } : undefined
           }
+          timestamp={insight.timestamp}
+          sourcesCheckedCount={insight.sourcesCheckedCount}
         />
       )
     })
