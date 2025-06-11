@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -154,7 +154,7 @@ export default function CriticalMaterials() {
               }`}
               onClick={() => setSelectedMaterial(key)}
             >
-              <CardHeader>
+              <div className="flex flex-col space-y-1.5 p-6">
                 <CardTitle className="flex items-center justify-between text-brand-dark">
                   {material.name}
                   <RiskIcon
@@ -168,7 +168,7 @@ export default function CriticalMaterials() {
                   />
                 </CardTitle>
                 <CardDescription>{material.description}</CardDescription>
-              </CardHeader>
+              </div>
               <CardContent>
                 <div className="space-y-2">
                   <div className="flex justify-between">
@@ -191,13 +191,13 @@ export default function CriticalMaterials() {
 
       {/* Detailed Material Analysis */}
       <Card className="transition-all duration-300 hover:shadow-xl">
-        <CardHeader>
+        <div className="flex flex-col space-y-1.5 p-6">
           <CardTitle className="flex items-center gap-2 text-brand-dark">
             <Zap className="h-5 w-5 text-brand-accent" />
             {criticalMaterials[selectedMaterial as keyof typeof criticalMaterials].name} - Detailed Analysis
           </CardTitle>
           <CardDescription>Comprehensive risk assessment and mitigation strategies</CardDescription>
-        </CardHeader>
+        </div>
         <CardContent>
           <Tabs defaultValue="advantages" className="w-full">
             <TabsList className="grid w-full grid-cols-3">
@@ -244,13 +244,13 @@ export default function CriticalMaterials() {
 
       {/* AI-Powered Insights */}
       <Card className="transition-all duration-300 hover:shadow-xl">
-        <CardHeader>
+        <div className="flex flex-col space-y-1.5 p-6">
           <CardTitle className="flex items-center gap-2 text-brand-dark">
             <Brain className="h-5 w-5 text-brand-accent" />
             AI-Powered Supply Chain Insights
           </CardTitle>
           <CardDescription>Advanced analytics and recommendations for critical materials sourcing</CardDescription>
-        </CardHeader>
+        </div>
         <CardContent>
           {!showAIInsights ? (
             <div className="text-center py-8">

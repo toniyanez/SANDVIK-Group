@@ -3,7 +3,7 @@
 import type React from "react"
 import Image from "next/image" // Added Image import
 import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -62,7 +62,7 @@ export default function AuthGuard({ children }: AuthGuardProps) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-700 to-slate-900 flex items-center justify-center p-4">
         <Card className="w-full max-w-md bg-white/90 backdrop-blur-sm shadow-2xl">
-          <CardHeader className="text-center">
+          <div className="flex flex-col space-y-1.5 p-6 text-center">
             <div className="mx-auto mb-4">
               <Image
                 src="/scc-logo-white.png"
@@ -77,7 +77,7 @@ export default function AuthGuard({ children }: AuthGuardProps) {
             <CardDescription className="text-slate-600">
               Secure access required to view Sandvik Group's confidential supply chain data.
             </CardDescription>
-          </CardHeader>
+          </div>
           <CardContent>
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-2">

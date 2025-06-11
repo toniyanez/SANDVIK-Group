@@ -2,7 +2,7 @@
 
 import type React from "react" // Added useEffect, useState
 import { useEffect, useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
+import { Card, CardContent, CardTitle, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -92,7 +92,7 @@ const InsightCard: React.FC<
   actionLink,
 }) => (
   <Card className="mb-4 transition-all duration-300 hover:shadow-lg border border-slate-200 bg-white">
-    <CardHeader className="pb-3">
+    <div className="flex flex-col space-y-1.5 p-6 pb-3">
       <div className="flex items-start justify-between">
         <div className="flex items-center">
           <Icon className="w-6 h-6 mr-3 text-brand-accent flex-shrink-0" />
@@ -116,7 +116,7 @@ const InsightCard: React.FC<
           {badgeText}
         </Badge>
       </div>
-    </CardHeader>
+    </div>
     <CardContent className="pb-4">
       <p className="text-sm text-slate-600 mb-3">{description}</p>
       <div className="text-xs text-slate-500 space-y-1.5 pt-3 border-t border-slate-100">
@@ -150,7 +150,7 @@ const InsightCard: React.FC<
 
 const InsightCardSkeleton: React.FC = () => (
   <Card className="mb-4 border border-slate-200 bg-white">
-    <CardHeader className="pb-3">
+    <div className="flex flex-col space-y-1.5 p-6 pb-3">
       <div className="flex items-start justify-between">
         <div className="flex items-center">
           <Skeleton className="w-6 h-6 mr-3 rounded-full" />
@@ -158,7 +158,7 @@ const InsightCardSkeleton: React.FC = () => (
         </div>
         <Skeleton className="h-5 w-16 ml-2" />
       </div>
-    </CardHeader>
+    </div>
     <CardContent className="pb-4">
       <Skeleton className="h-4 w-full mb-1" />
       <Skeleton className="h-4 w-5/6 mb-3" />

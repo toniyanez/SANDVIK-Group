@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { ComposableMap, Geographies, Geography, Marker, ZoomableGroup } from "react-simple-maps"
 import { Tooltip } from "react-tooltip"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Building2, Factory, Wrench, Truck, Briefcase } from "lucide-react"
 
@@ -131,7 +131,7 @@ export default function WorldMap() {
 
   return (
     <Card className="w-full">
-      <CardHeader>
+      <div className="flex flex-col space-y-1.5 p-6">
         <CardTitle className="flex items-center justify-between">
           <span>Global Footprint</span>
           <div className="flex gap-2">
@@ -154,7 +154,7 @@ export default function WorldMap() {
         <CardDescription>
           Sandvik's global presence across manufacturing, R&D, distribution, and offices
         </CardDescription>
-      </CardHeader>
+      </div>
       <CardContent>
         <div className="h-[500px] w-full overflow-hidden border rounded-lg bg-blue-50">
           <ComposableMap
@@ -207,12 +207,12 @@ export default function WorldMap() {
                     coordinates={[location.coordinates[0], location.coordinates[1]]}
                     onMouseEnter={() => {
                       setTooltipContent(`
-                        <div>
-                          <strong>${location.name}</strong><br/>
-                          <span>${locationTypes[location.type as keyof typeof locationTypes].name}</span><br/>
-                          <span>Business Areas: ${location.businessAreas.join(", ")}</span>
-                        </div>
-                      `)
+                      <div>
+                        <strong>${location.name}</strong><br/>
+                        <span>${locationTypes[location.type as keyof typeof locationTypes].name}</span><br/>
+                        <span>Business Areas: ${location.businessAreas.join(", ")}</span>
+                      </div>
+                    `)
                     }}
                     onMouseLeave={() => {
                       setTooltipContent("")

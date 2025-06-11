@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -213,13 +213,13 @@ export default function SupplyChainSimulations() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Scenario Selection */}
             <Card className="lg:col-span-1">
-              <CardHeader>
+              <div className="flex flex-col space-y-1.5 p-6">
                 <CardTitle className="flex items-center gap-2">
                   <Zap className="h-5 w-5 text-green-600" />
                   Scenario Configuration
                 </CardTitle>
                 <CardDescription>Select and customize simulation parameters</CardDescription>
-              </CardHeader>
+              </div>
               <CardContent className="space-y-4">
                 <div>
                   <Label htmlFor="scenario-select">Select Scenario</Label>
@@ -279,7 +279,7 @@ export default function SupplyChainSimulations() {
                 <div className="space-y-6">
                   {/* Impact Summary */}
                   <Card>
-                    <CardHeader>
+                    <div className="flex flex-col space-y-1.5 p-6">
                       <CardTitle className="flex items-center gap-2">
                         <TrendingUp className="h-5 w-5 text-green-600" />
                         Impact Summary: {simulationResult.scenarioName}
@@ -287,7 +287,7 @@ export default function SupplyChainSimulations() {
                       <CardDescription>
                         Timeframe: {simulationResult.timeframe} | Confidence: {simulationResult.confidence}%
                       </CardDescription>
-                    </CardHeader>
+                    </div>
                     <CardContent>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="text-center p-4 bg-blue-50 rounded-lg">
@@ -326,9 +326,9 @@ export default function SupplyChainSimulations() {
 
                   {/* Business Area Impacts */}
                   <Card>
-                    <CardHeader>
+                    <div className="flex flex-col space-y-1.5 p-6">
                       <CardTitle>Business Area Impact Analysis</CardTitle>
-                    </CardHeader>
+                    </div>
                     <CardContent>
                       <div className="space-y-3">
                         {simulationResult.impactAnalysis.businessAreaImpacts.map((impact: any, index: number) => (
@@ -354,12 +354,12 @@ export default function SupplyChainSimulations() {
 
                   {/* Strategic Recommendations */}
                   <Card>
-                    <CardHeader>
+                    <div className="flex flex-col space-y-1.5 p-6">
                       <CardTitle className="flex items-center gap-2">
                         <Shield className="h-5 w-5 text-green-600" />
                         AI-Generated Strategic Recommendations
                       </CardTitle>
-                    </CardHeader>
+                    </div>
                     <CardContent>
                       <div className="space-y-4">
                         {simulationResult.recommendations.map((rec: any, index: number) => (
@@ -400,9 +400,9 @@ export default function SupplyChainSimulations() {
 
                   {/* Risk Mitigation */}
                   <Card>
-                    <CardHeader>
+                    <div className="flex flex-col space-y-1.5 p-6">
                       <CardTitle>Risk Mitigation Strategy</CardTitle>
-                    </CardHeader>
+                    </div>
                     <CardContent>
                       <Tabs defaultValue="immediate" className="w-full">
                         <TabsList className="grid w-full grid-cols-4">
@@ -470,13 +470,13 @@ export default function SupplyChainSimulations() {
         <TabsContent value="scenario-comparison">
           <div className="space-y-6">
             <Card>
-              <CardHeader>
+              <div className="flex flex-col space-y-1.5 p-6">
                 <CardTitle className="flex items-center gap-2">
                   <BarChart3 className="h-5 w-5 text-green-600" />
                   Multi-Scenario Comparison
                 </CardTitle>
                 <CardDescription>Compare multiple scenarios to support strategic decision-making</CardDescription>
-              </CardHeader>
+              </div>
               <CardContent>
                 <div className="space-y-4">
                   <div>
@@ -533,9 +533,9 @@ export default function SupplyChainSimulations() {
               <div className="space-y-6">
                 {/* Comparison Chart */}
                 <Card>
-                  <CardHeader>
+                  <div className="flex flex-col space-y-1.5 p-6">
                     <CardTitle>Scenario Impact Comparison</CardTitle>
-                  </CardHeader>
+                  </div>
                   <CardContent>
                     <div className="h-80">
                       <ResponsiveContainer width="100%" height="100%">
@@ -556,9 +556,9 @@ export default function SupplyChainSimulations() {
 
                 {/* Strategic Recommendations */}
                 <Card>
-                  <CardHeader>
+                  <div className="flex flex-col space-y-1.5 p-6">
                     <CardTitle>Strategic Recommendations</CardTitle>
-                  </CardHeader>
+                  </div>
                   <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-3">
@@ -587,9 +587,9 @@ export default function SupplyChainSimulations() {
 
                 {/* Key Insights */}
                 <Card>
-                  <CardHeader>
+                  <div className="flex flex-col space-y-1.5 p-6">
                     <CardTitle>Key Strategic Insights</CardTitle>
-                  </CardHeader>
+                  </div>
                   <CardContent>
                     <div className="space-y-2">
                       {comparisonResults.insights.map((insight: string, index: number) => (
@@ -609,7 +609,7 @@ export default function SupplyChainSimulations() {
         {/* Portfolio Optimization */}
         <TabsContent value="portfolio-optimization">
           <Card>
-            <CardHeader>
+            <div className="flex flex-col space-y-1.5 p-6">
               <CardTitle className="flex items-center gap-2">
                 <Target className="h-5 w-5 text-green-600" />
                 Portfolio Optimization
@@ -617,7 +617,7 @@ export default function SupplyChainSimulations() {
               <CardDescription>
                 Optimize resource allocation across scenarios to minimize risk and maximize returns
               </CardDescription>
-            </CardHeader>
+            </div>
             <CardContent>
               {comparisonResults?.portfolioOptimization ? (
                 <div className="space-y-6">

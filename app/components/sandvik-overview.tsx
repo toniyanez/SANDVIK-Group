@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { DollarSign, Building, Users, Factory, FlaskConical, Warehouse, Briefcase } from "lucide-react"
 import WorldMap from "./world-map"
@@ -34,10 +34,10 @@ export default function SandvikOverview() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {kpiData.map((kpi) => (
           <Card key={kpi.title} className="transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div className="flex flex-row items-center justify-between space-y-0 p-6 pb-2">
               <CardTitle className="text-sm font-medium text-slate-600">{kpi.title}</CardTitle>
               <kpi.icon className="h-5 w-5 text-slate-400" />
-            </CardHeader>
+            </div>
             <CardContent>
               <div className="text-3xl font-bold text-brand-dark">{kpi.value}</div>
               <p className="text-xs text-slate-500">{kpi.description}</p>
@@ -48,7 +48,7 @@ export default function SandvikOverview() {
 
       {/* Global Footprint Map */}
       <Card className="transition-all duration-300 hover:shadow-xl">
-        <CardHeader>
+        <div className="flex flex-col space-y-1.5 p-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
             <div>
               <CardTitle className="text-2xl text-brand-dark">Global Footprint</CardTitle>
@@ -73,7 +73,7 @@ export default function SandvikOverview() {
               ))}
             </div>
           </div>
-        </CardHeader>
+        </div>
         <CardContent className="h-[500px] p-0">
           <WorldMap activeFilters={activeFilters} />
         </CardContent>
