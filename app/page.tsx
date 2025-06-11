@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Building2, Globe, Truck, AlertTriangle, Play, LogOut, User } from "lucide-react"
@@ -30,14 +30,27 @@ const navItems = [
 ]
 
 export default function StrategicCockpitPage() {
-  // Near the top of the StrategicCockpitPage component
+  const MAIN_HEADER_HEIGHT_PX = 68
+  const MAIN_HEADER_BORDER_PX = 1
+  const SECONDARY_HEADER_HEIGHT_PX = 40 // Height for the new sub-header
+  const TOTAL_HEADER_HEIGHT_PX = MAIN_HEADER_HEIGHT_PX + MAIN_HEADER_BORDER_PX + SECONDARY_HEADER_HEIGHT_PX
 
-  // 1. Define header height for consistent use
-  const HEADER_HEIGHT_PX = 68
-  const HEADER_BORDER_PX = 1
-  const STICKY_TOP_OFFSET_PX = HEADER_HEIGHT_PX + HEADER_BORDER_PX
+  const STICKY_TOP_OFFSET_MAIN_HEADER_PX = 0
+  const STICKY_TOP_OFFSET_SECONDARY_HEADER_PX = MAIN_HEADER_HEIGHT_PX + MAIN_HEADER_BORDER_PX
+  const STICKY_TOP_OFFSET_CONTENT_AREA_PX = TOTAL_HEADER_HEIGHT_PX
 
   const [activeTab, setActiveTab] = useState("overview")
+  const [secondaryHeaderText, setSecondaryHeaderText] = useState("")
+
+  useEffect(() => {
+    const currentNavItem = navItems.find((item) => item.id === activeTab)
+    if (currentNavItem) {
+      setSecondaryHeaderText(`${currentNavItem.label} View - Sandvik Group Supply Chain Data`)
+    } else {
+      // Fallback or initial text if needed
+      setSecondaryHeaderText("Sandvik Group Supply Chain Data")
+    }
+  }, [activeTab])
 
   const renderContent = () => {
     switch (activeTab) {
@@ -59,10 +72,13 @@ export default function StrategicCockpitPage() {
   return (
     <AuthGuard>
       <div className="flex flex-col min-h-screen bg-gray-100">
-        <header className="bg-slate-800 text-white shadow-md sticky top-0 z-40 border-b">
-          {/* This div centers the header content and provides consistent horizontal padding */}
+        {/* Main Header */}
+        <header
+          className="bg-slate-800 text-white shadow-md sticky z-50 border-b border-slate-700"
+          style={{ top: `${STICKY_TOP_OFFSET_MAIN_HEADER_PX}px` }}
+        >
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className={`flex items-center justify-between h-[${HEADER_HEIGHT_PX}px]`}>
+            <div className={`flex items-center justify-between h-[${MAIN_HEADER_HEIGHT_PX}px]`}>
               <Image
                 src="/scc-logo-white.png"
                 alt="Supply Chain Companions Logo"
@@ -74,15 +90,30 @@ export default function StrategicCockpitPage() {
               <div className="flex-1 text-center">
                 <h2 className="text-2xl font-bold">Strategic Cockpit</h2>
               </div>
-              <p className="text-sm text-slate-300 hidden md:block">Sandvik Group Supply Chain Cockpit</p>
+              {/* Placeholder for potential right-side elements in main header, if any in future */}
+              <div className="w-[218px] mr-4"> {/* This div balances the logo width for centering the title */}</div>
             </div>
           </div>
         </header>
 
+        {/* Secondary Header */}
+        <div
+          className="bg-slate-700 text-slate-200 text-sm shadow-sm sticky z-40 border-b border-slate-600"
+          style={{ top: `${STICKY_TOP_OFFSET_SECONDARY_HEADER_PX}px`, height: `${SECONDARY_HEADER_HEIGHT_PX}px` }}
+        >
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center h-full">
+            <p>{secondaryHeaderText}</p>
+          </div>
+        </div>
+
+        {/* Main Content Area with Sidebar */}
         <div className={`flex-1 max-w-7xl mx-auto w-full flex`}>
-          {/* Branded Sidebar Navigation */}
           <aside
-            className={`w-64 bg-slate-800 text-slate-200 flex flex-col justify-between sticky top-[${STICKY_TOP_OFFSET_PX}px] h-[calc(100vh-${STICKY_TOP_OFFSET_PX}px)]`}
+            className={`w-64 bg-slate-800 text-slate-200 flex flex-col justify-between sticky z-30`}
+            style={{
+              top: `${STICKY_TOP_OFFSET_CONTENT_AREA_PX}px`,
+              height: `calc(100vh - ${STICKY_TOP_OFFSET_CONTENT_AREA_PX}px)`,
+            }}
           >
             <div className="flex-grow px-4 pt-4">
               <TooltipProvider delayDuration={0}>
@@ -109,7 +140,7 @@ export default function StrategicCockpitPage() {
                           >
                             <item.icon className="h-5 w-5" />
                             <span className="text-sm">{item.label}</span>
-                          </Button>
+                          </Button\
                         </TooltipTrigger>
                         <TooltipContent side="right" className="bg-slate-900 text-white border-slate-700">
                           <p>{item.label}</p>
@@ -122,9 +153,7 @@ export default function StrategicCockpitPage() {
             </div>
 
             {/* User Profile Section */}
-            <div className="mt-auto p-4">
-              {" "}
-              {/* mt-auto pushes it to the bottom of the flex container */}
+            <div className="mt-auto p-4 border-t border-slate-700">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
@@ -160,8 +189,12 @@ export default function StrategicCockpitPage() {
             </div>
           </aside>
 
-          {/* Main Content Area */}
-          <main className="flex-1 p-6 bg-gradient-to-br from-blue-50 to-indigo-100 overflow-y-auto">
+          {/* Main Content Display */}
+          <main
+            className="flex-1 p-6 bg-gradient-to-br from-blue-50 to-indigo-100 overflow-y-auto"
+            style={{ paddingTop: `${SECONDARY_HEADER_HEIGHT_PX + 24}px` }} // 24px is the original p-6
+          >
+            {/* The main content area needs its own sticky positioning for its header if any, or just scroll */}
             {renderContent()}
           </main>
         </div>
