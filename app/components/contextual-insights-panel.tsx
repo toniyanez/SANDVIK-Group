@@ -19,24 +19,30 @@ import {
   ServerCrash,
   Bot,
   Newspaper,
-  type LucideIcon,
+  TrendingUp,
   AlertTriangle,
   DollarSign,
   Settings,
   Truck,
+  BarChart3,
+  Brain,
+  ArrowRight,
+  Zap,
+  Factory,
+  Users,
+  ShieldQuestion,
+  ClipboardCheck,
+  Play,
+  Rocket,
+  Leaf,
+  type LucideIcon,
 } from "lucide-react"
 import Link from "next/link"
-import { formatDistanceToNow } from "date-fns" // For timestamp formatting if needed
-import { cn } from "@/lib/utils" // For conditional class names
-
-// Match the ApiInsight structure from the API route
-interface DetailedSource {
-  name: string
-  contribution: string
-}
+import { formatDistanceToNow } from "date-fns"
+import { cn } from "@/lib/utils"
 
 interface ApiInsight {
-  id?: string // Optional, can be generated client-side if not present
+  id?: string
   iconName: string
   title: string
   description: string
@@ -51,15 +57,14 @@ interface ApiInsight {
     text: string
     iconName: string
   }
-  timestamp?: string // ISO 8601 string
-  detailedSources?: DetailedSource[]
+  timestamp?: string
+  detailedSources?: Array<{ name: string; contribution: string }>
   sourcesCheckedCount?: number
-  // Fields for the new card structure (can be derived or added to API)
-  category?: string // e.g., "Financial Update", "Market Trend" (can be same as badgeText or new)
-  type?: "ai" | "manual" | "news" // To determine main icon and potentially styling
-  sentiment?: "positive" | "negative" | "neutral" // Optional for styling title or adding an icon
-  verification?: string // e.g., "2 sources checked" (can be derived from sourcesCheckedCount)
-  fullReportUrl?: string // Can be same as actionLink.href or new
+  category?: string
+  type?: "ai" | "manual" | "news"
+  sentiment?: "positive" | "negative" | "neutral"
+  verification?: string
+  fullReportUrl?: string
 }
 
 interface ContextualInsightsPanelProps {
@@ -67,38 +72,45 @@ interface ContextualInsightsPanelProps {
   className?: string
 }
 
-// Icon mapping from previous version, ensure all used icons are here
 const iconMap: { [key: string]: LucideIcon } = {
   Lightbulb,
-  TrendingUp: Lightbulb, // Placeholder if TrendingUp not imported
+  TrendingUp,
   AlertTriangle,
   DollarSign,
   Settings,
   Truck,
-  BarChart3: ListChecks, // Placeholder
-  Brain: Bot,
+  BarChart3,
+  Brain,
   FileText,
-  ArrowRight: ExternalLink, // Placeholder
+  ArrowRight,
   ListChecks,
-  Zap: Lightbulb, // Placeholder
-  Factory: Settings, // Placeholder
+  Zap,
+  Factory,
   Info,
   Clock,
   ShieldCheck,
   BookOpen,
   ExternalLink,
-  MessageSquareWarning: AlertTriangle, // Placeholder
   CheckCircle2,
-  XCircle: ServerCrash, // Placeholder
+  ServerCrash,
   Bot,
   Newspaper,
+  Users,
+  ShieldQuestion,
+  ClipboardCheck,
+  Play,
+  Rocket,
+  Leaf,
+  KeyIcon: Settings,
+  Building2: Factory,
+  Globe: TrendingUp,
 }
 const DefaultIcon = Info
 
 const InsightTypeIcon = ({ type, iconName }: { type?: ApiInsight["type"]; iconName?: string }) => {
-  if (type === "ai" || iconName === "Brain") return <Bot className="w-5 h-5 text-purple-500" />
-  if (type === "manual" || iconName === "CheckCircle2") return <CheckCircle2 className="w-5 h-5 text-blue-500" />
-  if (type === "news" || iconName === "Newspaper") return <Newspaper className="w-5 h-5 text-orange-500" />
+  if (type === "news") return <Newspaper className="w-5 h-5 text-orange-500" />
+  if (type === "ai") return <Bot className="w-5 h-5 text-purple-500" />
+  if (type === "manual") return <CheckCircle2 className="w-5 h-5 text-blue-500" />
 
   const IconComponent = iconName ? iconMap[iconName] : DefaultIcon
   return IconComponent ? (
@@ -114,11 +126,20 @@ const ContextualInsightsPanel: React.FC<ContextualInsightsPanelProps> = ({ activ
   const [error, setError] = useState<string | null>(null)
   const [activeInsightType, setActiveInsightType] = useState<"all" | "ai" | "manual" | "news">("all")
 
+  const formatTabNameForDisplay = (tabId: string): string => {
+    if (!tabId) return "Insights"
+    return tabId
+      .split("-")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ")
+  }
+
   useEffect(() => {
     const fetchInsightsForTab = async () => {
       if (!activeTab) {
         setInsights([])
         setIsLoading(false)
+        setError("No active tab specified for insights.")
         return
       }
 
@@ -135,30 +156,36 @@ const ContextualInsightsPanel: React.FC<ContextualInsightsPanelProps> = ({ activ
             const errorBody = await response.json()
             errorMessage = `Error: ${errorBody.error || errorBody.message || response.statusText} (Status: ${response.status})`
           } catch (jsonError) {
-            /* Use existing errorMessage */
+            // Use existing errorMessage
           }
           throw new Error(errorMessage)
         }
 
         const data = await response.json()
-        // Correctly access the nested 'insights' array
-        const fetchedInsights: ApiInsight[] = (data.insights || []).map((insight: ApiInsight, index: number) => ({
-          ...insight,
-          id: insight.id || `${activeTab}-insight-${index}`, // Ensure unique ID
-          type: insight.isAI ? "ai" : "manual", // Simple type derivation
-          category: insight.badgeText, // Use badgeText as category for now
-          verification: insight.sourcesCheckedCount ? `${insight.sourcesCheckedCount} sources checked` : undefined,
-          fullReportUrl: insight.actionLink?.href,
-          sentiment:
-            insight.badgeVariant === "destructive"
-              ? "negative"
-              : insight.badgeVariant === "success"
-                ? "positive"
-                : "neutral",
-        }))
+        const fetchedInsights: ApiInsight[] = (data.insights || []).map((insight: ApiInsight, index: number) => {
+          let determinedType = insight.type
+          if (!determinedType) {
+            determinedType = insight.isAI ? "ai" : insight.source.toLowerCase().includes("news") ? "news" : "manual"
+          }
+          return {
+            ...insight,
+            id: insight.id || `${activeTab}-insight-${index}`,
+            type: determinedType,
+            category: insight.badgeText,
+            verification: insight.sourcesCheckedCount ? `${insight.sourcesCheckedCount} sources checked` : undefined,
+            fullReportUrl: insight.actionLink?.href,
+            sentiment:
+              insight.badgeVariant === "destructive"
+                ? "negative"
+                : insight.badgeVariant === "success" ||
+                    (insight.badgeClassName && insight.badgeClassName.includes("green"))
+                  ? "positive"
+                  : "neutral",
+          }
+        })
         setInsights(fetchedInsights)
       } catch (err: any) {
-        console.error("Error fetching insights in ContextualInsightsPanel:", err)
+        console.error(`Error fetching insights for tab "${activeTab}" in ContextualInsightsPanel:`, err)
         setError(err.message || "An unknown error occurred while fetching insights.")
         setInsights([])
       } finally {
@@ -170,10 +197,20 @@ const ContextualInsightsPanel: React.FC<ContextualInsightsPanelProps> = ({ activ
   }, [activeTab])
 
   const filteredInsights = useMemo(() => {
-    if (activeInsightType === "all") {
-      return insights
+    const baseFiltered =
+      activeInsightType === "all" ? insights : insights.filter((insight) => insight.type === activeInsightType)
+
+    if (activeInsightType === "news" || activeInsightType === "all") {
+      return [...baseFiltered].sort((a, b) => {
+        if (a.timestamp && b.timestamp) {
+          return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+        }
+        if (a.timestamp) return -1
+        if (b.timestamp) return 1
+        return 0
+      })
     }
-    return insights.filter((insight) => insight.type === activeInsightType)
+    return baseFiltered
   }, [insights, activeInsightType])
 
   const getSentimentClasses = (sentiment?: ApiInsight["sentiment"]) => {
@@ -188,13 +225,40 @@ const ContextualInsightsPanel: React.FC<ContextualInsightsPanelProps> = ({ activ
     }
   }
 
+  const getBadgeStyling = (
+    badgeVariant?: ApiInsight["badgeVariant"],
+    badgeClassName?: string,
+    isAI?: boolean,
+    type?: ApiInsight["type"],
+  ): { variant: "default" | "secondary" | "destructive" | "outline"; className: string } => {
+    if (type === "ai" && badgeClassName?.includes("purple")) {
+      return { variant: "default", className: badgeClassName }
+    }
+    if (badgeClassName) return { variant: "default", className: badgeClassName }
+
+    switch (badgeVariant) {
+      case "success":
+        return { variant: "default", className: "bg-green-500 hover:bg-green-600 text-white border-green-600" }
+      case "warning":
+        return { variant: "default", className: "bg-amber-500 hover:bg-amber-600 text-white border-amber-600" }
+      case "info":
+        return { variant: "default", className: "bg-blue-500 hover:bg-blue-600 text-white border-blue-600" }
+      case "destructive":
+        return { variant: "destructive", className: "" }
+      default:
+        return { variant: "secondary", className: "" }
+    }
+  }
+
+  const panelTitle = `Insights for ${formatTabNameForDisplay(activeTab)}`
+
   if (isLoading) {
     return (
       <Card className={cn("shadow-lg h-full flex items-center justify-center", className)}>
         <div className="flex flex-col items-center text-slate-500 dark:text-slate-400">
           <Loader2 className="w-12 h-12 animate-spin text-brand-accent mb-4" />
           <p className="text-lg font-semibold">Loading Insights...</p>
-          <p className="text-sm">Please wait while we fetch the latest data.</p>
+          <p className="text-sm">Fetching latest data for {formatTabNameForDisplay(activeTab)}.</p>
         </div>
       </Card>
     )
@@ -208,7 +272,7 @@ const ContextualInsightsPanel: React.FC<ContextualInsightsPanelProps> = ({ activ
         <div className="flex flex-col items-center text-red-700 dark:text-red-300 text-center">
           <ServerCrash className="w-12 h-12 mb-4" />
           <p className="text-lg font-semibold mb-1">Error Loading Insights</p>
-          <p className="text-sm mb-3">We couldn't fetch the contextual insights at this moment.</p>
+          <p className="text-sm mb-3">Could not fetch insights for {formatTabNameForDisplay(activeTab)}.</p>
           <p className="text-xs text-red-500 dark:text-red-400 bg-red-100 dark:bg-red-800/50 p-2 rounded-md">
             Details: {error}
           </p>
@@ -218,35 +282,17 @@ const ContextualInsightsPanel: React.FC<ContextualInsightsPanelProps> = ({ activ
   }
 
   if (insights.length === 0 && !isLoading) {
-    // Ensure not to show "No Insights" while loading
     return (
       <Card className={cn("shadow-lg h-full flex items-center justify-center", className)}>
         <div className="flex flex-col items-center text-slate-500 dark:text-slate-400 p-6 text-center">
           <Info className="w-12 h-12 text-brand-accent mb-4" />
           <p className="text-lg font-semibold">No Insights Available</p>
-          <p className="text-sm">There are no contextual insights for "{activeTab}" at this time.</p>
+          <p className="text-sm">
+            There are no contextual insights for "{formatTabNameForDisplay(activeTab)}" at this time.
+          </p>
         </div>
       </Card>
     )
-  }
-
-  const getBadgeStyling = (
-    badgeVariant?: ApiInsight["badgeVariant"],
-    isAI?: boolean,
-  ): { variant: "default" | "secondary" | "destructive" | "outline"; className: string } => {
-    if (isAI) return { variant: "default", className: "bg-sky-500 hover:bg-sky-600 text-white border-sky-600" }
-    switch (badgeVariant) {
-      case "success":
-        return { variant: "default", className: "bg-green-500 hover:bg-green-600 text-white border-green-600" }
-      case "warning":
-        return { variant: "default", className: "bg-amber-500 hover:bg-amber-600 text-white border-amber-600" }
-      case "info":
-        return { variant: "default", className: "bg-blue-500 hover:bg-blue-600 text-white border-blue-600" }
-      case "destructive":
-        return { variant: "destructive", className: "" } // Uses default destructive styling
-      default:
-        return { variant: "secondary", className: "" } // Uses default secondary styling
-    }
   }
 
   return (
@@ -255,7 +301,7 @@ const ContextualInsightsPanel: React.FC<ContextualInsightsPanelProps> = ({ activ
         <div className="flex justify-between items-center">
           <CardTitle className="text-lg font-semibold text-brand-dark dark:text-slate-100 flex items-center">
             <Lightbulb className="w-5 h-5 mr-2 text-brand-accent" />
-            Contextual Insights
+            {panelTitle}
           </CardTitle>
         </div>
       </CardHeader>
@@ -277,14 +323,25 @@ const ContextualInsightsPanel: React.FC<ContextualInsightsPanelProps> = ({ activ
               <div className="flex flex-col items-center justify-center h-full text-slate-500 dark:text-slate-400 p-6 text-center">
                 <Info className="w-10 h-10 text-brand-accent mb-3" />
                 <p className="text-md font-semibold">No {activeInsightType} insights</p>
-                <p className="text-sm">There are no insights of this type for "{activeTab}".</p>
+                <p className="text-sm">
+                  There are no insights of this type for "{formatTabNameForDisplay(activeTab)}".
+                </p>
               </div>
             )}
             {filteredInsights.map((insight) => {
-              const badgeStyle = getBadgeStyling(insight.badgeVariant, insight.isAI)
+              const badgeStyle = getBadgeStyling(
+                insight.badgeVariant,
+                insight.badgeClassName,
+                insight.isAI,
+                insight.type,
+              )
+              const ActionIcon = insight.actionLink
+                ? iconMap[insight.actionLink.iconName] || ExternalLink
+                : ExternalLink
+
               return (
                 <Card
-                  key={insight.id || insight.title} // Use title as fallback key if id is missing
+                  key={insight.id || insight.title}
                   className={cn(
                     "bg-white dark:bg-slate-800/70 shadow-sm hover:shadow-md transition-shadow",
                     getSentimentClasses(insight.sentiment),
@@ -335,17 +392,17 @@ const ContextualInsightsPanel: React.FC<ContextualInsightsPanelProps> = ({ activ
                       </div>
                     </div>
                   </CardContent>
-                  {insight.fullReportUrl && (
+                  {(insight.fullReportUrl || insight.actionLink) && (
                     <CardFooter className="py-2 px-4 border-t dark:border-slate-700/50">
                       <Link
-                        href={insight.fullReportUrl}
+                        href={insight.fullReportUrl || insight.actionLink?.href || "#"}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center text-xs text-brand-accent hover:underline font-medium"
                       >
-                        <FileText className="w-3.5 h-3.5 mr-1.5" />
-                        {insight.actionLink?.text || "View Full Report"}
-                        <ExternalLink className="w-3 h-3 ml-1" />
+                        <ActionIcon className="w-3.5 h-3.5 mr-1.5" />
+                        {insight.actionLink?.text || "View Details"}
+                        <ExternalLink className="w-3 h-3 ml-1 opacity-70" />
                       </Link>
                     </CardFooter>
                   )}

@@ -1,7 +1,6 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-
 import type React from "react"
 import { useState, useEffect, Suspense } from "react"
 import Image from "next/image"
@@ -10,7 +9,7 @@ import {
   Building2,
   Globe,
   Truck,
-  AlertTriangle,
+  KeyIcon as CriticalMaterialsIcon,
   Play,
   LogOut,
   User,
@@ -22,6 +21,7 @@ import {
   ChevronRight,
   Loader2,
   Rocket,
+  ShieldAlert,
 } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import {
@@ -62,6 +62,16 @@ const StrategicDirectionSection = dynamic(() => import("@/app/components/strateg
   ),
 })
 
+const ChallengesAndRisksSection = dynamic(() => import("@/app/components/challenges-risks-section"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center min-h-[400px]">
+      <Loader2 className="h-8 w-8 animate-spin text-brand-accent" />
+      <p className="ml-2 text-lg text-slate-500">Loading Challenges & Risks Component...</p>
+    </div>
+  ),
+})
+
 interface NavSubItem {
   id: string
   label: string
@@ -84,16 +94,25 @@ const navItems: NavItem[] = [
     subItems: [
       { id: "financials", label: "Financials", icon: DollarSign, parentId: "overview" },
       { id: "strategic-direction", label: "Strategic Direction", icon: Rocket, parentId: "overview" },
+      { id: "challenges-risks", label: "Challenges & Risks", icon: ShieldAlert, parentId: "overview" },
     ],
   },
   { id: "manufacturing", label: "Manufacturing", icon: Building2 },
-  { id: "materials", label: "Critical Materials", icon: AlertTriangle },
+  { id: "materials", label: "Critical Materials", icon: CriticalMaterialsIcon },
   { id: "logistics", label: "Logistics", icon: Truck },
   { id: "simulations", label: "Simulations", icon: Play },
 ]
 
-// Define which tab IDs are valid endpoints for the /api/contextual-insights API
-const VALID_API_INSIGHT_TABS = ["overview", "financials", "manufacturing", "materials", "logistics", "simulations"]
+const VALID_API_INSIGHT_TABS = [
+  "overview",
+  "financials",
+  "strategic-direction",
+  "challenges-risks",
+  "manufacturing",
+  "materials",
+  "logistics",
+  "simulations",
+]
 
 export default function StrategicCockpitPage() {
   const MAIN_HEADER_HEIGHT_PX = 68
@@ -108,13 +127,13 @@ export default function StrategicCockpitPage() {
   useEffect(() => {
     let headerText = "Sandvik Group Supply Chain Data"
     const parentItem = navItems.find((item) => item.subItems?.some((sub) => sub.id === activeView))
-    const currentItem =
+    const currentItemDetails =
       parentItem?.subItems?.find((sub) => sub.id === activeView) || navItems.find((item) => item.id === activeView)
 
-    if (parentItem && currentItem && parentItem.id !== currentItem.id) {
-      headerText = `${parentItem.label} > ${currentItem.label} View - Sandvik Group Supply Chain Data`
-    } else if (currentItem) {
-      headerText = `${currentItem.label} View - Sandvik Group Supply Chain Data`
+    if (parentItem && currentItemDetails && parentItem.id !== currentItemDetails.id) {
+      headerText = `${parentItem.label} > ${currentItemDetails.label} View - Sandvik Group Supply Chain Data`
+    } else if (currentItemDetails) {
+      headerText = `${currentItemDetails.label} View - Sandvik Group Supply Chain Data`
     }
     setSecondaryHeaderText(headerText)
   }, [activeView])
@@ -149,6 +168,19 @@ export default function StrategicCockpitPage() {
             <StrategicDirectionSection />
           </Suspense>
         )
+      case "challenges-risks":
+        return (
+          <Suspense
+            fallback={
+              <div className="flex items-center justify-center min-h-[400px]">
+                <Loader2 className="h-8 w-8 animate-spin text-brand-accent" />
+                <p className="ml-2 text-lg text-slate-500">Loading Challenges & Risks Component...</p>
+              </div>
+            }
+          >
+            <ChallengesAndRisksSection />
+          </Suspense>
+        )
       case "manufacturing":
         return <ManufacturingFootprint />
       case "materials":
@@ -162,22 +194,14 @@ export default function StrategicCockpitPage() {
     }
   }
 
-  // Determine the correct tab for the Contextual Insights Panel.
   let determinedInsightsTabForPanel: string
-
   if (VALID_API_INSIGHT_TABS.includes(activeView)) {
-    // If the activeView itself is a tab with its own insights (e.g., "financials", "overview")
     determinedInsightsTabForPanel = activeView
   } else {
-    // If activeView is a sub-item (e.g., "strategic-direction") or an unknown tab,
-    // try to find its parent.
     const parentItem = navItems.find((item) => item.subItems?.some((sub) => sub.id === activeView))
     if (parentItem && VALID_API_INSIGHT_TABS.includes(parentItem.id)) {
-      // If parent exists and parent's ID is a valid API tab, use parent's ID.
-      // (e.g., "strategic-direction" has parent "overview", which is valid)
       determinedInsightsTabForPanel = parentItem.id
     } else {
-      // Fallback for any other case (e.g., no parent, or parent.id is not a valid API tab)
       determinedInsightsTabForPanel = "overview"
     }
   }
@@ -324,8 +348,8 @@ export default function StrategicCockpitPage() {
                                   setExpandedMainTab(item.id === expandedMainTab && item.subItems ? null : item.id)
                                 }}
                                 className={`w-full justify-start items-center space-x-3 py-2.5 rounded-lg transition-all duration-200 ease-in-out
-                                  ${isMainActive && !item.subItems?.some((sub) => sub.id === activeView) ? "bg-brand-accent text-white font-semibold" : "text-slate-300 hover:bg-brand-dark-secondary hover:text-white"}
-                                `}
+                                ${isMainActive && !item.subItems?.some((sub) => sub.id === activeView) ? "bg-brand-accent text-white font-semibold" : "text-slate-300 hover:bg-brand-dark-secondary hover:text-white"}
+                              `}
                               >
                                 <item.icon className="h-5 w-5 flex-shrink-0" />
                                 <span className="text-sm flex-1 text-left">{item.label}</span>
@@ -352,8 +376,8 @@ export default function StrategicCockpitPage() {
                                         variant="ghost"
                                         onClick={() => setActiveView(subItem.id)}
                                         className={`w-full justify-start items-center space-x-3 py-2 rounded-lg transition-all duration-200 ease-in-out
-                                          ${isSubActive ? "bg-brand-accent text-white font-semibold" : "text-slate-400 hover:bg-brand-dark-secondary hover:text-slate-200"}
-                                        `}
+                                        ${isSubActive ? "bg-brand-accent text-white font-semibold" : "text-slate-400 hover:bg-brand-dark-secondary hover:text-slate-200"}
+                                      `}
                                       >
                                         <subItem.icon className="h-4 w-4 flex-shrink-0 ml-1" />
                                         <span className="text-xs">{subItem.label}</span>

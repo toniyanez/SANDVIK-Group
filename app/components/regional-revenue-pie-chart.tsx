@@ -1,24 +1,43 @@
 "use client"
 
 import type React from "react"
+import { useEffect, useState } from "react"
 import { Pie } from "react-chartjs-2"
-import { Chart as ChartJS, ArcElement, Tooltip, Legend, Title, type ChartData, type ChartOptions } from "chart.js"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Chart, ArcElement, Tooltip, Legend, type ChartOptions, type ChartData } from "chart.js"
 import ChartDataLabels from "chartjs-plugin-datalabels"
+import { Loader2 } from "lucide-react"
 
-ChartJS.register(ArcElement, Tooltip, Legend, Title, ChartDataLabels)
+// Register Chart.js components and the datalabels plugin
+// This is done once at the module level.
+// Ensure ChartDataLabels is registered.
+try {
+  if (Chart.registry.plugins.get(ChartDataLabels.id)) {
+    // Plugin already registered
+  } else {
+    Chart.register(ArcElement, Tooltip, Legend, ChartDataLabels)
+  }
+} catch (e) {
+  // Fallback if Chart.registry.plugins.get is not available (older Chart.js versions)
+  // or if there's an issue with re-registration.
+  // This simple registration should be safe.
+  Chart.register(ArcElement, Tooltip, Legend, ChartDataLabels)
+}
+
+interface PieChartDataset {
+  label: string
+  data: number[]
+  backgroundColor: string[]
+  borderColor: string[]
+  borderWidth: number
+}
+
+interface PieChartDataProps {
+  labels: string[]
+  datasets: PieChartDataset[]
+}
 
 interface RegionalRevenuePieChartProps {
-  data: {
-    labels: string[]
-    datasets: {
-      label: string
-      data: number[]
-      backgroundColor: string[]
-      borderColor: string[]
-      borderWidth: number
-    }[]
-  }
+  data: PieChartDataProps
   title?: string
 }
 
@@ -26,102 +45,99 @@ export const RegionalRevenuePieChart: React.FC<RegionalRevenuePieChartProps> = (
   data,
   title = "Regional Revenue Share",
 }) => {
+  const [isMounted, setIsMounted] = useState(false)
+
+  useEffect(() => {
+    // Component did mount, safe to render chart
+    setIsMounted(true)
+  }, [])
+
+  if (!isMounted) {
+    return (
+      <div className="flex items-center justify-center h-64 w-full bg-slate-50 dark:bg-slate-800/30 rounded-lg">
+        <Loader2 className="h-8 w-8 animate-spin text-brand-accent" />
+        <p className="ml-3 text-slate-600 dark:text-slate-400">Loading Regional Revenue Chart...</p>
+      </div>
+    )
+  }
+
+  const pieChartData: ChartData<"pie"> = {
+    labels: data.labels,
+    datasets: data.datasets.map((dataset) => ({
+      ...dataset,
+      // Ensure data is an array of numbers for the pie chart
+      data: dataset.data.map((d) => Number(d)),
+    })),
+  }
+
   const options: ChartOptions<"pie"> = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
       legend: {
-        display: false, // Disable the legend at the bottom
-      },
-      title: {
-        display: false,
+        display: false, // Keep legend disabled as labels are on slices
       },
       tooltip: {
-        enabled: true,
-        backgroundColor:
-          typeof window !== "undefined" &&
-          window.matchMedia &&
-          window.matchMedia("(prefers-color-scheme: dark)").matches
-            ? "rgba(30, 41, 59, 0.85)"
-            : "rgba(255, 255, 255, 0.85)", // slate-800 dark, white light
-        titleColor:
-          typeof window !== "undefined" &&
-          window.matchMedia &&
-          window.matchMedia("(prefers-color-scheme: dark)").matches
-            ? "#e2e8f0"
-            : "#1e293b", // slate-200 dark, slate-800 light
-        bodyColor:
-          typeof window !== "undefined" &&
-          window.matchMedia &&
-          window.matchMedia("(prefers-color-scheme: dark)").matches
-            ? "#e2e8f0"
-            : "#1e293b",
-        borderColor:
-          typeof window !== "undefined" &&
-          window.matchMedia &&
-          window.matchMedia("(prefers-color-scheme: dark)").matches
-            ? "#475569"
-            : "#e2e8f0", // slate-600 dark, slate-200 light
-        borderWidth: 1,
-        padding: 10,
+        enabled: true, // Keep tooltips enabled for hover details
         callbacks: {
           label: (context) => {
-            let label = context.dataset.label || ""
-            if (label) {
-              label += ": "
+            const label = context.label || ""
+            const value = context.raw as number
+            let total = 0
+            if (context.chart.data.datasets[0] && context.chart.data.datasets[0].data) {
+              // Sum of all data points in the dataset
+              total = (context.chart.data.datasets[0].data as number[]).reduce((acc, val) => acc + val, 0)
             }
-            if (context.parsed !== null) {
-              label += context.parsed + "%"
-            }
-            return label
+            const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0
+            return `${label}: ${percentage}%`
           },
         },
       },
       datalabels: {
         display: true,
         formatter: (value, context) => {
-          const label = context.chart.data.labels?.[context.dataIndex] ?? ""
-          return `${label}\n${value}%`
+          const label = context.chart.data.labels?.[context.dataIndex] || ""
+          const dataset = context.chart.data.datasets[context.datasetIndex]
+          const total = (dataset.data as number[]).reduce((acc: number, val: number) => acc + val, 0)
+          const percentage = total > 0 ? (((value as number) / total) * 100).toFixed(1) : "0.0"
+          if (Number.parseFloat(percentage) < 5) {
+            // Don't show label if slice is too small
+            return null
+          }
+          return `${label}\n${percentage}%`
         },
-        color: "#fff",
-        textAlign: "center",
+        color: "#fff", // White text for contrast on colored slices
+        backgroundColor: "rgba(0, 0, 0, 0.5)", // Semi-transparent black background for labels
+        borderRadius: 4,
+        padding: {
+          top: 2,
+          bottom: 2,
+          left: 4,
+          right: 4,
+        },
         font: {
           weight: "bold",
-          size: 12,
+          size: 11, // Slightly adjusted font size
         },
-        textShadowBlur: 6,
-        textShadowColor: "rgba(0, 0, 0, 0.4)",
+        textShadow: {
+          // Adding text shadow for better readability
+          color: "rgba(0, 0, 0, 0.75)",
+          offsetX: 1,
+          offsetY: 1,
+          blur: 3,
+        },
+        anchor: "center", // Attempt to center labels on slices
+        align: "center",
       },
     },
-    animation: {
-      animateScale: true,
-      animateRotate: true,
-      duration: 800,
+    layout: {
+      padding: 20, // Add padding around the chart to ensure labels fit
     },
-  }
-
-  // Fallback for SSR or if data is not ready
-  if (typeof window === "undefined" || !data || !data.labels || data.labels.length === 0) {
-    return (
-      <Card className="w-full h-[400px] flex items-center justify-center shadow-lg bg-white dark:bg-slate-800/60">
-        <CardHeader>
-          <CardTitle className="text-xl text-brand-dark dark:text-slate-100">{title}</CardTitle>
-        </CardHeader>
-        <CardContent className="text-center">
-          <p className="text-slate-500 dark:text-slate-400">Loading chart data...</p>
-        </CardContent>
-      </Card>
-    )
   }
 
   return (
-    <Card className="shadow-lg bg-white dark:bg-slate-800/60">
-      <CardHeader>
-        <CardTitle className="text-xl text-brand-dark dark:text-slate-100">{title}</CardTitle>
-      </CardHeader>
-      <CardContent className="h-[400px] w-full p-4">
-        <Pie data={data as ChartData<"pie", number[], string>} options={options} />
-      </CardContent>
-    </Card>
+    <div className="w-full h-80 md:h-96 relative p-4 bg-white dark:bg-slate-800/60 rounded-lg shadow-md">
+      <Pie data={pieChartData} options={options} />
+    </div>
   )
 }
