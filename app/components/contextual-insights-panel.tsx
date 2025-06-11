@@ -1,12 +1,12 @@
 "use client"
 
-import type React from "react" // Added useEffect, useState
+import type React from "react"
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardTitle, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Skeleton } from "@/components/ui/skeleton" // Added Skeleton
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   Info,
   AlertTriangle,
@@ -26,8 +26,35 @@ import {
   Sparkles,
   ArrowRight,
   Factory,
+  CalendarDays,
 } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+
+// Utility function to format time ago
+const formatTimeAgo = (timestamp: string | number | Date): string => {
+  const date = new Date(timestamp)
+  const now = new Date()
+  const seconds = Math.round((now.getTime() - date.getTime()) / 1000)
+  const minutes = Math.round(seconds / 60)
+  const hours = Math.round(minutes / 60)
+  const days = Math.round(hours / 24)
+  const weeks = Math.round(days / 7)
+  const months = Math.round(days / 30.44) // Average days in month
+  const years = Math.round(days / 365.25) // Account for leap years
+
+  if (seconds < 5) return "just now"
+  if (seconds < 60) return `${seconds} seconds ago`
+  if (minutes < 60) return `${minutes} minutes ago`
+  if (hours < 24) return `${hours} hours ago`
+  if (days === 1) return "yesterday"
+  if (days < 7) return `${days} days ago`
+  if (weeks === 1) return "last week"
+  if (weeks < 4) return `${weeks} weeks ago` // Up to 3 weeks
+  if (months === 1) return "last month"
+  if (months < 12) return `${months} months ago`
+  if (years === 1) return "last year"
+  return `${years} years ago`
+}
 
 // Define the structure of an insight received from the API
 interface ApiInsight {
@@ -40,6 +67,7 @@ interface ApiInsight {
   source: string
   confidence: number | string
   isAI?: boolean
+  dataTimestamp: string // Added dataTimestamp (e.g., ISO 8601 string)
   actionLink?: {
     href: string
     text: string
@@ -71,7 +99,7 @@ const iconMap: Record<string, React.ElementType> = {
   Sparkles,
   ArrowRight,
   Factory,
-  // Add any other icons your API might return
+  CalendarDays,
 }
 
 const InsightCard: React.FC<
@@ -89,10 +117,13 @@ const InsightCard: React.FC<
   source,
   confidence,
   isAI = false,
+  dataTimestamp, // Added dataTimestamp
   actionLink,
 }) => (
   <Card className="mb-4 transition-all duration-300 hover:shadow-lg border border-slate-200 bg-white">
     <div className="flex flex-col space-y-1.5 p-6 pb-3">
+      {" "}
+      {/* Replaced CardHeader */}
       <div className="flex items-start justify-between">
         <div className="flex items-center">
           <Icon className="w-6 h-6 mr-3 text-brand-accent flex-shrink-0" />
@@ -133,6 +164,10 @@ const InsightCard: React.FC<
           <ShieldCheck className="w-3.5 h-3.5 mr-1.5 text-green-500" />
           <span>Confidence: {typeof confidence === "number" ? `${confidence}%` : confidence}</span>
         </div>
+        <div className="flex items-center">
+          <CalendarDays className="w-3.5 h-3.5 mr-1.5 text-slate-400" />
+          <span>Data as of: {formatTimeAgo(dataTimestamp)}</span>
+        </div>
       </div>
     </CardContent>
     {actionLink && (
@@ -151,6 +186,8 @@ const InsightCard: React.FC<
 const InsightCardSkeleton: React.FC = () => (
   <Card className="mb-4 border border-slate-200 bg-white">
     <div className="flex flex-col space-y-1.5 p-6 pb-3">
+      {" "}
+      {/* Replaced CardHeader */}
       <div className="flex items-start justify-between">
         <div className="flex items-center">
           <Skeleton className="w-6 h-6 mr-3 rounded-full" />
@@ -165,6 +202,7 @@ const InsightCardSkeleton: React.FC = () => (
       <div className="space-y-1.5 pt-3 border-t border-slate-100">
         <Skeleton className="h-3 w-1/2" />
         <Skeleton className="h-3 w-1/3" />
+        <Skeleton className="h-3 w-2/5" /> {/* Skeleton for date tag */}
       </div>
     </CardContent>
   </Card>
@@ -179,7 +217,7 @@ export default function ContextualInsightsPanel({ activeTab }: ContextualInsight
     const fetchInsights = async () => {
       setIsLoading(true)
       setError(null)
-      setInsights([]) // Clear previous insights
+      setInsights([])
       try {
         const response = await fetch(`/api/contextual-insights?tab=${activeTab}`)
         if (!response.ok) {
@@ -189,7 +227,12 @@ export default function ContextualInsightsPanel({ activeTab }: ContextualInsight
           )
         }
         const data = await response.json()
-        setInsights(data.insights || [])
+        // Ensure data.insights is an array and has dataTimestamp, provide a default if missing for robustness
+        const processedInsights = (data.insights || []).map((insight: any) => ({
+          ...insight,
+          dataTimestamp: insight.dataTimestamp || new Date().toISOString(), // Default to now if missing
+        }))
+        setInsights(processedInsights)
       } catch (err) {
         setError(err instanceof Error ? err.message : "An unknown error occurred while fetching insights.")
         setInsights([])
@@ -223,7 +266,6 @@ export default function ContextualInsightsPanel({ activeTab }: ContextualInsight
           variant="outline"
           size="sm"
           onClick={() => {
-            /* Re-trigger fetch */
             const fetchAgain = async () => {
               setIsLoading(true)
               setError(null)
@@ -232,7 +274,11 @@ export default function ContextualInsightsPanel({ activeTab }: ContextualInsight
                 const response = await fetch(`/api/contextual-insights?tab=${activeTab}`)
                 if (!response.ok) throw new Error(`Failed to fetch insights: ${response.statusText}`)
                 const data = await response.json()
-                setInsights(data.insights || [])
+                const processedInsights = (data.insights || []).map((insight: any) => ({
+                  ...insight,
+                  dataTimestamp: insight.dataTimestamp || new Date().toISOString(),
+                }))
+                setInsights(processedInsights)
               } catch (err) {
                 setError(err instanceof Error ? err.message : "An unknown error occurred")
                 setInsights([])
@@ -250,12 +296,12 @@ export default function ContextualInsightsPanel({ activeTab }: ContextualInsight
     )
   } else if (insights.length > 0) {
     content = insights.map((insight, index) => {
-      const IconComponent = iconMap[insight.iconName] || Info // Fallback to Info icon
+      const IconComponent = iconMap[insight.iconName] || Info
       const ActionIconComponent = insight.actionLink ? iconMap[insight.actionLink.iconName] || LinkIcon : undefined
 
       return (
         <InsightCard
-          key={`${insight.title}-${index}`} // Using title and index for key
+          key={`${insight.title}-${index}`}
           icon={IconComponent}
           title={insight.title}
           description={insight.description}
@@ -265,6 +311,7 @@ export default function ContextualInsightsPanel({ activeTab }: ContextualInsight
           source={insight.source}
           confidence={insight.confidence}
           isAI={insight.isAI}
+          dataTimestamp={insight.dataTimestamp} // Pass dataTimestamp
           actionLink={
             insight.actionLink && ActionIconComponent ? { ...insight.actionLink, icon: ActionIconComponent } : undefined
           }
