@@ -1,8 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardTitle } from "@/components/ui/card"
 import { DollarSign, Building, Users, Factory, FlaskConical, Warehouse, Briefcase } from "lucide-react"
 import WorldMap from "./world-map"
 
@@ -48,32 +47,6 @@ export default function SandvikOverview() {
 
       {/* Global Footprint Map */}
       <Card className="transition-all duration-300 hover:shadow-xl">
-        <div className="flex flex-col space-y-1.5 p-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <CardTitle className="text-2xl text-brand-dark">Global Footprint</CardTitle>
-              <CardDescription>
-                Sandvik's global presence across manufacturing, R&D, distribution, and offices
-              </CardDescription>
-            </div>
-            <div className="flex flex-wrap gap-2 mt-4 sm:mt-0">
-              {facilityTypes.map((type) => (
-                <Button
-                  key={type.id}
-                  variant={activeFilters.includes(type.id) ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => toggleFilter(type.id)}
-                  className={`transition-all duration-200 ${
-                    activeFilters.includes(type.id) ? "bg-brand-accent text-white" : "text-slate-600"
-                  }`}
-                >
-                  <type.icon className="mr-2 h-4 w-4" />
-                  {type.label}
-                </Button>
-              ))}
-            </div>
-          </div>
-        </div>
         <CardContent className="h-[500px] p-0">
           <WorldMap activeFilters={activeFilters} />
         </CardContent>
