@@ -140,10 +140,34 @@ const ContextualInsightsPanel: React.FC<ContextualInsightsPanelProps> = ({ activ
       try {
         const response = await fetch(`/api/contextual-insights?tab=${activeTab}`)
         if (!response.ok) {
-          const errorBody = await response.json().catch(() => ({}))
-          throw new Error(
-            errorBody.error || errorBody.message || `Failed to fetch insights (Status: ${response.status})`,
-          )
+          let errorMsg = `Failed to fetch insights (Status: ${response.status})`
+          let responseBodyForLogging: any = {}
+          try {
+            const errorBody = await response.json()
+            responseBodyForLogging = errorBody // Store for logging
+            // Use a more specific error message if provided by the API
+            if (errorBody.error) {
+              errorMsg = errorBody.error
+            } else if (errorBody.message) {
+              // Some APIs might use 'message'
+              errorMsg = errorBody.message
+            }
+            // Log the full error body received from the API
+            console.error("Contextual Insights API Error Response:", errorBody)
+          } catch (parseError) {
+            // If parsing JSON fails, log the raw text response if possible
+            try {
+              const textResponse = await response.text()
+              console.error("Failed to parse error response JSON. Raw text response:", textResponse)
+              responseBodyForLogging = { rawResponse: textResponse }
+            } catch (textError) {
+              console.error("Failed to parse error response JSON and failed to get raw text response:", textError)
+            }
+          }
+          // Include more details in the error thrown to the UI
+          const detailedError = new Error(errorMsg)
+          ;(detailedError as any).details = responseBodyForLogging // Attach details if needed later
+          throw detailedError
         }
         const data = await response.json()
         const fetchedInsights: ApiInsight[] = (data.insights || []).map((insight: any, index: number) => ({
@@ -186,20 +210,8 @@ const ContextualInsightsPanel: React.FC<ContextualInsightsPanelProps> = ({ activ
     return insights.filter((insight) => insight.type === activeInsightType)
   }, [insights, activeInsightType])
 
-  const getCardStyleClasses = (insight: ApiInsight): string => {
-    if (insight.type === "ai") {
-      return "border-l-4 border-purple-500"
-    }
-    if (insight.type === "news") {
-      return "border-l-4 border-orange-500"
-    }
-    if (insight.type === "manual") {
-      // Using a distinct blue for manual/curated insights
-      return "border-l-4 border-sky-500"
-    }
-
-    // Fallback to sentiment for any other cases or if type is not explicitly handled above
-    switch (insight.sentiment) {
+  const getSentimentClasses = (sentiment?: ApiInsight["sentiment"]) => {
+    switch (sentiment) {
       case "positive":
         return "border-l-4 border-green-500"
       case "negative":
@@ -262,8 +274,8 @@ const ContextualInsightsPanel: React.FC<ContextualInsightsPanelProps> = ({ activ
             <ServerCrash className="w-12 h-12 mb-4" />
             <p className="text-lg font-semibold mb-1">Error Loading Insights</p>
             <p className="text-sm mb-3">We couldn't fetch the contextual insights.</p>
-            <p className="text-xs text-red-500 dark:text-red-400 bg-red-100 dark:bg-red-800/50 p-2 rounded-md mb-4">
-              Details: {error}
+            <p className="text-xs text-red-500 dark:text-red-400 bg-red-100 dark:bg-red-800/50 p-2 rounded-md mb-4 break-all">
+              Error: {error}
             </p>
             <Button onClick={handleLoadInsights} variant="outline">
               <Sparkles className="w-4 h-4 mr-2" />
@@ -298,7 +310,7 @@ const ContextualInsightsPanel: React.FC<ContextualInsightsPanelProps> = ({ activ
                       key={insight.id}
                       className={cn(
                         "bg-white dark:bg-slate-800/70 shadow-sm hover:shadow-md transition-shadow",
-                        getCardStyleClasses(insight),
+                        getSentimentClasses(insight.sentiment),
                       )}
                     >
                       <CardHeader className="py-3 px-4">

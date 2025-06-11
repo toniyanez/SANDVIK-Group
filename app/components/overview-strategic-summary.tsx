@@ -1,32 +1,15 @@
 "use client"
 
-import type React from "react"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Card } from "@/components/ui/card"
 import { Target, AlertTriangle, Rocket } from "lucide-react"
 
-interface AccordionSectionItem {
-  title: string
-  points: string[]
-  icon?: React.ElementType // Optional icon for sub-sections if needed later
-}
-
-interface AccordionSection {
-  id: string
-  title: string
-  icon: React.ElementType
-  iconColor: string
-  defaultOpen?: boolean
-  content: AccordionSectionItem[]
-}
-
-const summaryData: AccordionSection[] = [
+const summaryData = [
   {
     id: "goals",
     title: "Main Goals & Strategic Objectives",
     icon: Target,
-    iconColor: "text-blue-500",
-    defaultOpen: true,
+    color: "text-blue-500",
     content: [
       {
         title: "Drive Organic Growth",
@@ -66,7 +49,7 @@ const summaryData: AccordionSection[] = [
     id: "challenges",
     title: "Key Challenges",
     icon: AlertTriangle,
-    iconColor: "text-red-500",
+    color: "text-yellow-500",
     content: [
       {
         title: "Macroeconomic Uncertainty",
@@ -102,7 +85,7 @@ const summaryData: AccordionSection[] = [
     id: "opportunities",
     title: "Opportunities",
     icon: Rocket,
-    iconColor: "text-green-500",
+    color: "text-green-500",
     content: [
       {
         title: "Strong Mining Momentum",
@@ -131,32 +114,26 @@ const summaryData: AccordionSection[] = [
 ]
 
 export default function OverviewStrategicSummary() {
-  const defaultOpenValues = summaryData.filter((section) => section.defaultOpen).map((section) => section.id)
-
   return (
-    <div className="space-y-6">
-      <Accordion type="multiple" defaultValue={defaultOpenValues} className="w-full space-y-4">
-        {summaryData.map((section) => (
-          <AccordionItem key={section.id} value={section.id} className="border-none">
-            <Card className="shadow-lg bg-white dark:bg-slate-800/60">
-              <AccordionTrigger className="bg-slate-100 dark:bg-slate-700/50 hover:bg-slate-200 dark:hover:bg-slate-700 px-6 py-4 rounded-t-lg text-left">
-                <div className="flex items-center space-x-3">
-                  <section.icon className={`w-6 h-6 ${section.iconColor}`} />
-                  <h3 className="text-lg font-semibold text-brand-dark dark:text-slate-100">{section.title}</h3>
+    <div className="my-6">
+      <Accordion type="multiple" defaultValue={["goals"]} className="w-full space-y-4">
+        {summaryData.map((item) => (
+          <AccordionItem value={item.id} key={item.id} className="border-none">
+            <Card>
+              <AccordionTrigger className="text-lg p-4 hover:no-underline bg-slate-100 dark:bg-slate-800/50 rounded-t-lg">
+                <div className="flex items-center">
+                  <item.icon className={`w-6 h-6 mr-3 ${item.color}`} />
+                  <span>{item.title}</span>
                 </div>
               </AccordionTrigger>
-              <AccordionContent className="p-6 bg-white dark:bg-slate-800/30 rounded-b-lg">
+              <AccordionContent className="p-6">
                 <div className="space-y-4">
-                  {section.content.map((item, itemIndex) => (
-                    <div key={itemIndex}>
-                      <h4 className="text-md font-semibold text-brand-dark-secondary dark:text-slate-200 mb-1.5 flex items-center">
-                        {/* You can add specific icons for sub-sections if needed here */}
-                        {/* item.icon && <item.icon className="w-4 h-4 mr-2 text-slate-500" /> */}
-                        {item.title}
-                      </h4>
-                      <ul className="list-disc list-inside space-y-1 text-sm text-slate-600 dark:text-slate-300 pl-2">
-                        {item.points.map((point, pointIndex) => (
-                          <li key={pointIndex}>{point}</li>
+                  {item.content.map((section, index) => (
+                    <div key={index}>
+                      <h4 className="font-semibold text-md mb-2">{section.title}</h4>
+                      <ul className="space-y-1 list-disc list-inside text-slate-600 dark:text-slate-400">
+                        {section.points.map((point, pIndex) => (
+                          <li key={pIndex}>{point}</li>
                         ))}
                       </ul>
                     </div>

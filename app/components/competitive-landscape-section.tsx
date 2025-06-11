@@ -49,16 +49,31 @@ function parseRevenueToUSD(revenueString?: string): number | null {
   const normalizedStr = revenueString.replace(/,/g, "").trim()
 
   // Check for quarterly or half-year indicators for annualization
-  if (/$$Q\d\s*\d{4}.*$$/i.test(normalizedStr)) {
+  if (/Q\d\s*\d{4}/i.test(normalizedStr) || /Q\d\/\d{2,4}/i.test(normalizedStr)) {
+    // e.g. Q1 2025 or Q1/25
     annualizationFactor = 4
-  } else if (/$$First six months \d{4}.*$$/i.test(normalizedStr)) {
+  } else if (/H1\s*\d{4}/i.test(normalizedStr) || /First six months \d{4}/i.test(normalizedStr)) {
     annualizationFactor = 2
   }
 
-  // Try to extract currency code first (USD, EUR, etc.)
-  // Regex: Optional currency symbol, then optional currency code, then number, then optional unit
-  const pattern = /^([$€])?(USD|EUR|GBP|SEK|JPY|DKK)?\s*([\d.]+)\s*(B|BILLION|M|MILLION)?/i
-  const match = normalizedStr.match(pattern)
+  // Regex: Optional currency symbol ($, €, £, ¥), then optional currency code (USD, EUR, etc.), then number, then optional unit (B, M, BILLION, MILLION)
+  // Handles cases like: "$1.23B", "EUR 4,863 million", "SEK 176,771 million", "JPY 3,865.1 billion", "$2.2B (MP Segment FY2023...)"
+  const pattern = /^([$€£¥])?(USD|EUR|GBP|SEK|JPY|DKK)?\s*([\d.]+)\s*(B|BILLION|M|MILLION)?/i
+  let match = normalizedStr.match(pattern)
+
+  // If pattern doesn't match at the beginning, try to find currency code first if it's like "SEK 21,117 million (Q1 2025, net sales)"
+  if (!match) {
+    const currencyCodeMatch = normalizedStr.match(/^(USD|EUR|GBP|SEK|JPY|DKK)\s+/i)
+    if (currencyCodeMatch) {
+      const code = currencyCodeMatch[0].trim().toUpperCase() as keyof typeof EXCHANGE_RATES_TO_USD
+      const restOfString = normalizedStr.substring(code.length).trim()
+      const valuePattern = /^([\d.]+)\s*(B|BILLION|M|MILLION)?/i
+      const valueMatch = restOfString.match(valuePattern)
+      if (valueMatch) {
+        match = [normalizedStr, undefined, code, valueMatch[1], valueMatch[2]] as RegExpMatchArray // Construct a match-like array
+      }
+    }
+  }
 
   if (match) {
     const symbol = match[1]
@@ -78,25 +93,14 @@ function parseRevenueToUSD(revenueString?: string): number | null {
       currency = "USD"
     } else if (symbol === "€") {
       currency = "EUR"
+    } else if (symbol === "£") {
+      currency = "GBP"
+    } else if (symbol === "¥") {
+      currency = "JPY"
     } else {
-      // If no symbol and no explicit code, it might be like "SEK 21,117 million..."
-      // This case is tricky if the first word isn't a currency code.
-      // For this dataset, most are covered by symbol or explicit code.
-      // Let's check if the first word of the original string is a currency code
-      const firstWord = normalizedStr.split(" ")[0].toUpperCase()
-      if (EXCHANGE_RATES_TO_USD[firstWord as keyof typeof EXCHANGE_RATES_TO_USD]) {
-        currency = firstWord as keyof typeof EXCHANGE_RATES_TO_USD
-        // Re-parse value part if currency code was the first word
-        const restOfStringForValue = normalizedStr.substring(firstWord.length).trim()
-        const valueAndUnitOnlyMatch = restOfStringForValue.match(/^([\d.]+)\s*(B|BILLION|M|MILLION)?/i)
-        if (valueAndUnitOnlyMatch) {
-          baseValue = Number.parseFloat(valueAndUnitOnlyMatch[1])
-          const unitOnly = valueAndUnitOnlyMatch[2]?.toUpperCase()
-          if (unitOnly === "B" || unitOnly === "BILLION") baseValue *= 1_000_000_000
-          else if (unitOnly === "M" || unitOnly === "MILLION") baseValue *= 1_000_000
-        } else {
-          return null // Cannot parse value after finding currency code
-        }
+      // Fallback if no symbol and no explicit code but match occurred (e.g. from constructed match)
+      if (match[2] && EXCHANGE_RATES_TO_USD[match[2].toUpperCase() as keyof typeof EXCHANGE_RATES_TO_USD]) {
+        currency = match[2].toUpperCase() as keyof typeof EXCHANGE_RATES_TO_USD
       } else {
         return null // Cannot determine currency
       }
@@ -141,22 +145,24 @@ interface BusinessAreaCompetitors {
   marketVisionText: string
 }
 
+// THIS IS THE DATA TO BE UPDATED FROM YOUR LATEST PDF
 const competitorDataRaw: BusinessAreaCompetitors[] = [
   {
     id: "smr",
     name: "Sandvik Mining and Rock Solutions (SMR)",
     icon: HardHat,
-    sandvikIllustrativeMarketShare: 21,
+    sandvikIllustrativeMarketShare: 21, // Example: Update this value
     marketVisionText:
       "Sandvik SMR continues to lead in mining innovation, capitalizing on strong commodity prices (gold, copper) and customer investment in productivity and sustainability. The segment's robust Q1 2025 performance (10% organic order growth, 20.8% EBITA margin) is driven by its focus on electrification (e.g., DR410iE/DR411iE electric rotary drills), automation (AutoMine®, Newtrax APDS), and full lifecycle solutions. Competition is intense, with global players also emphasizing digital and sustainable offerings, but Sandvik's integrated approach, strong aftermarket, and proactive risk mitigation for tariffs provide a competitive edge. 'Others' represent a diverse group of regional and niche technology providers.",
     description:
       "Key competitors in the global mining equipment, services, and solutions market, including automation, electrification, digital technologies, and aftermarket support. Sandvik SMR achieved a 20.8% Adjusted EBITA margin in Q1 2025.",
     competitors: [
+      // Example: Update this competitor's data
       {
         name: "Metso",
         countryOfOrigin: "Finland",
         companySize: "16,832 employees (2024)",
-        globalRevenue: "EUR 4,863 million (2024)",
+        globalRevenue: "EUR 4,863 million (2024)", // Ensure this is from the latest PDF
         strengths: [
           "Flexible manufacturing, high-quality sustainable products.",
           "Frontrunner in sustainable technologies for aggregates, minerals processing, metals refining.",
@@ -180,6 +186,7 @@ const competitorDataRaw: BusinessAreaCompetitors[] = [
           "Digitalization and advanced analytics with machine learning/AI.",
         ],
       },
+      // ... other competitors for SMR ...
       {
         name: "Epiroc",
         countryOfOrigin: "Sweden",
@@ -451,12 +458,13 @@ const competitorDataRaw: BusinessAreaCompetitors[] = [
     id: "srp",
     name: "Sandvik Rock Processing Solutions (SRP)",
     icon: Layers3,
-    sandvikIllustrativeMarketShare: 23,
+    sandvikIllustrativeMarketShare: 23, // Example: Update this value
     marketVisionText:
       "Sandvik SRP is navigating a mixed demand environment, with stable mining activity contrasting subdued infrastructure demand, particularly in Europe (Q1 2025). The launch of innovative electric solutions like the QH443E cone crusher (optimizing production, fuel savings) underscores SRP's commitment to sustainability and operational efficiency, positioning it for future growth as infrastructure spending recovers. The Adjusted EBITA margin improved to 15.1% in Q1 2025 due to savings and cost control. Competition is fragmented, especially in infrastructure, involving global players and regional specialists. 'Others' include a wide array of local manufacturers and niche solution providers.",
     description:
       "Competitors in rock processing solutions for mining and infrastructure, including crushing, screening, and mobile equipment. Sandvik SRP's revenues grew 8% organically in Q1 2025.",
     competitors: [
+      // Example: Update competitors for SRP
       {
         name: "Metso",
         countryOfOrigin: "Finland",
@@ -538,12 +546,13 @@ const competitorDataRaw: BusinessAreaCompetitors[] = [
     id: "smm",
     name: "Sandvik Manufacturing and Machining Solutions (SMM)",
     icon: Settings2,
-    sandvikIllustrativeMarketShare: 17,
+    sandvikIllustrativeMarketShare: 17, // Example: Update this value
     marketVisionText:
       "Sandvik SMM is navigating a challenging industrial environment (Q1 2025: order intake -6% organic), particularly in automotive and general engineering, but demonstrates resilience through strong cost control (Adjusted EBITA margin 20.9%) and growth in its software business (mid-single digits, US strong). Strategic acquisitions in CAM (FASTech, ShopWare, etc.) and metrology software (Verisurf, CIMCO parts) are strengthening its digital manufacturing offerings. The focus remains on providing advanced cutting tools, materials technology (incl. powder), and integrated software solutions to enhance customer productivity and efficiency. 'Others' in this diverse market include specialized toolmakers, regional software vendors, and traditional manufacturers.",
     description:
       "Competitors across premium/mid-market cutting tools, Computer-Aided Manufacturing (CAM) software, metrology solutions, and advanced materials. SMM's software business grew mid-single digits in Q1 2025.",
     competitors: [
+      // Example: Update competitors for SMM
       {
         name: "IMC Group (ISCAR)",
         countryOfOrigin: "Israel",
@@ -754,6 +763,11 @@ const competitorDataRaw: BusinessAreaCompetitors[] = [
     ],
   },
 ]
+
+// --- The rest of the component remains the same ---
+// (Code from your previous correct version including `competitorData` processing,
+// `TabContentList`, `CompetitorCard`, `AreaMarketShareChart`, and the main
+// `CompetitiveLandscapeSection` export default function)
 
 const competitorData: BusinessAreaCompetitors[] = competitorDataRaw.map((area) => ({
   ...area,
@@ -1028,6 +1042,27 @@ export default function CompetitiveLandscapeSection() {
       // Find the largest slice to absorb the final small difference
       const largestSlice = chartData.reduce((prev, current) => (prev.value > current.value ? prev : current))
       largestSlice.value = Number.parseFloat((largestSlice.value + finalDiff).toFixed(1))
+    }
+
+    // Ensure all values are non-negative after adjustments
+    chartData.forEach((d) => {
+      if (d.value < 0) d.value = 0
+    })
+
+    // Re-normalize if any value became 0 and sum is not 100
+    const reNormalizedSum = chartData.reduce((sum, entry) => sum + entry.value, 0)
+    if (reNormalizedSum > 0 && Math.abs(reNormalizedSum - 100) > 0.01) {
+      const reScaleFactor = 100 / reNormalizedSum
+      let sumOfReScaledValues = 0
+      chartData.forEach((d, index) => {
+        const scaledValue = d.value * reScaleFactor
+        if (index < chartData.length - 1) {
+          d.value = Number.parseFloat(scaledValue.toFixed(1))
+          sumOfReScaledValues += d.value
+        } else {
+          d.value = Number.parseFloat((100 - sumOfReScaledValues).toFixed(1))
+        }
+      })
     }
 
     return chartData.filter((d) => d.value > 0.1)
