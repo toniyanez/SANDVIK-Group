@@ -143,20 +143,28 @@ export default function CriticalMaterials() {
   return (
     <div className="space-y-6">
       {/* Material Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {Object.entries(criticalMaterials).map(([key, material]) => {
           const RiskIcon = getRiskIcon(material.riskLevel)
           return (
             <Card
               key={key}
-              className={`cursor-pointer transition-all ${selectedMaterial === key ? "ring-2 ring-blue-500" : ""}`}
+              className={`cursor-pointer transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${
+                selectedMaterial === key ? "ring-2 ring-brand-accent" : "ring-1 ring-transparent"
+              }`}
               onClick={() => setSelectedMaterial(key)}
             >
               <CardHeader>
-                <CardTitle className="flex items-center justify-between">
+                <CardTitle className="flex items-center justify-between text-brand-dark">
                   {material.name}
                   <RiskIcon
-                    className={`h-5 w-5 ${material.riskLevel === "Low" ? "text-green-500" : material.riskLevel === "Medium" ? "text-yellow-500" : "text-red-500"}`}
+                    className={`h-5 w-5 ${
+                      material.riskLevel === "Low"
+                        ? "text-green-500"
+                        : material.riskLevel === "Medium"
+                          ? "text-amber-500"
+                          : "text-red-500"
+                    }`}
                   />
                 </CardTitle>
                 <CardDescription>{material.description}</CardDescription>
@@ -164,14 +172,14 @@ export default function CriticalMaterials() {
               <CardContent>
                 <div className="space-y-2">
                   <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Status:</span>
-                    <Badge variant="outline">{material.status}</Badge>
+                    <span className="text-sm text-slate-600">Status:</span>
+                    <Badge variant="secondary">{material.status}</Badge>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Risk Level:</span>
+                    <span className="text-sm text-slate-600">Risk Level:</span>
                     <Badge className={getRiskColor(material.riskLevel)}>{material.riskLevel}</Badge>
                   </div>
-                  <div className="text-sm text-gray-600">
+                  <div className="text-sm text-slate-600">
                     <strong>Source:</strong> {material.source}
                   </div>
                 </div>
@@ -182,10 +190,10 @@ export default function CriticalMaterials() {
       </div>
 
       {/* Detailed Material Analysis */}
-      <Card>
+      <Card className="transition-all duration-300 hover:shadow-xl">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Zap className="h-5 w-5" />
+          <CardTitle className="flex items-center gap-2 text-brand-dark">
+            <Zap className="h-5 w-5 text-brand-accent" />
             {criticalMaterials[selectedMaterial as keyof typeof criticalMaterials].name} - Detailed Analysis
           </CardTitle>
           <CardDescription>Comprehensive risk assessment and mitigation strategies</CardDescription>
@@ -235,10 +243,10 @@ export default function CriticalMaterials() {
       </Card>
 
       {/* AI-Powered Insights */}
-      <Card>
+      <Card className="transition-all duration-300 hover:shadow-xl">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Brain className="h-5 w-5" />
+          <CardTitle className="flex items-center gap-2 text-brand-dark">
+            <Brain className="h-5 w-5 text-brand-accent" />
             AI-Powered Supply Chain Insights
           </CardTitle>
           <CardDescription>Advanced analytics and recommendations for critical materials sourcing</CardDescription>
@@ -246,24 +254,27 @@ export default function CriticalMaterials() {
         <CardContent>
           {!showAIInsights ? (
             <div className="text-center py-8">
-              <Button onClick={generateAIRecommendations} className="flex items-center gap-2">
+              <Button
+                onClick={() => setShowAIInsights(true)}
+                className="bg-brand-accent hover:bg-brand-accent-hover text-white flex items-center gap-2 shadow-lg hover:shadow-xl transition-shadow"
+              >
                 <Brain className="h-4 w-4" />
                 Generate AI Insights & Recommendations
               </Button>
-              <p className="text-sm text-gray-500 mt-2">
+              <p className="text-sm text-slate-500 mt-2">
                 Analyze supply chain data using OpenAI to identify risks and opportunities
               </p>
             </div>
           ) : (
             <div className="space-y-4">
               {aiInsights.map((insight, index) => (
-                <Alert key={index}>
-                  <TrendingUp className="h-4 w-4" />
-                  <AlertTitle className="flex items-center justify-between">
+                <Alert key={index} className="border-l-4 border-brand-accent bg-blue-50/50">
+                  <TrendingUp className="h-4 w-4 text-brand-accent" />
+                  <AlertTitle className="flex items-center justify-between font-semibold text-brand-dark">
                     {insight.title}
                     <Badge variant="outline">{insight.confidence}% confidence</Badge>
                   </AlertTitle>
-                  <AlertDescription className="mt-2">{insight.insight}</AlertDescription>
+                  <AlertDescription className="mt-2 text-slate-700">{insight.insight}</AlertDescription>
                   <div className="mt-2">
                     <Badge variant="secondary">{insight.category}</Badge>
                   </div>

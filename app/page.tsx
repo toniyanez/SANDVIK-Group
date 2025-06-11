@@ -31,25 +31,19 @@ const navItems = [
 
 export default function StrategicCockpitPage() {
   const MAIN_HEADER_HEIGHT_PX = 68
-  const MAIN_HEADER_BORDER_PX = 1
-  const SECONDARY_HEADER_HEIGHT_PX = 40 // Height for the new sub-header
-  const TOTAL_HEADER_HEIGHT_PX = MAIN_HEADER_HEIGHT_PX + MAIN_HEADER_BORDER_PX + SECONDARY_HEADER_HEIGHT_PX
-
-  const STICKY_TOP_OFFSET_MAIN_HEADER_PX = 0
-  const STICKY_TOP_OFFSET_SECONDARY_HEADER_PX = MAIN_HEADER_HEIGHT_PX + MAIN_HEADER_BORDER_PX
-  const STICKY_TOP_OFFSET_CONTENT_AREA_PX = TOTAL_HEADER_HEIGHT_PX
+  const SECONDARY_HEADER_HEIGHT_PX = 40
+  const TOTAL_HEADER_HEIGHT_PX = MAIN_HEADER_HEIGHT_PX + SECONDARY_HEADER_HEIGHT_PX
 
   const [activeTab, setActiveTab] = useState("overview")
   const [secondaryHeaderText, setSecondaryHeaderText] = useState("")
 
   useEffect(() => {
     const currentNavItem = navItems.find((item) => item.id === activeTab)
-    if (currentNavItem) {
-      setSecondaryHeaderText(`${currentNavItem.label} View - Sandvik Group Supply Chain Data`)
-    } else {
-      // Fallback or initial text if needed
-      setSecondaryHeaderText("Sandvik Group Supply Chain Data")
-    }
+    setSecondaryHeaderText(
+      currentNavItem
+        ? `${currentNavItem.label} View - Sandvik Group Supply Chain Data`
+        : "Sandvik Group Supply Chain Data",
+    )
   }, [activeTab])
 
   const renderContent = () => {
@@ -71,12 +65,15 @@ export default function StrategicCockpitPage() {
 
   return (
     <AuthGuard>
-      <div className="bg-gray-100">
+      <div className="bg-brand-background">
         <div className="flex flex-col min-h-screen max-w-7xl mx-auto">
           {/* Main Header */}
-          <header className="bg-slate-800 text-white shadow-md sticky top-0 z-50 border-b border-slate-700">
-            <div className="px-4 sm:px-6 lg:px-8">
-              <div className={`flex items-center justify-between h-[${MAIN_HEADER_HEIGHT_PX}px]`}>
+          <header
+            className="bg-brand-dark text-white sticky top-0 z-50 border-b border-brand-dark-secondary"
+            style={{ height: `${MAIN_HEADER_HEIGHT_PX}px` }}
+          >
+            <div className="px-4 sm:px-6 lg:px-8 h-full">
+              <div className="flex items-center justify-between h-full">
                 <Image
                   src="/scc-logo-white.png"
                   alt="Supply Chain Companions Logo"
@@ -86,17 +83,17 @@ export default function StrategicCockpitPage() {
                   priority
                 />
                 <div className="flex-1 text-center">
-                  <h2 className="text-2xl font-bold">Strategic Cockpit</h2>
+                  <h2 className="text-2xl font-bold tracking-wider">Strategic Cockpit</h2>
                 </div>
-                <div className="w-[218px] mr-4" /> {/* This div balances the logo width for centering the title */}
+                <div className="w-[218px] mr-4" />
               </div>
             </div>
           </header>
 
           {/* Secondary Header */}
           <div
-            className="bg-slate-700 text-slate-200 text-sm shadow-sm sticky z-40 border-b border-slate-600"
-            style={{ top: `${STICKY_TOP_OFFSET_SECONDARY_HEADER_PX}px`, height: `${SECONDARY_HEADER_HEIGHT_PX}px` }}
+            className="bg-brand-dark-secondary text-slate-300 text-sm sticky z-40 border-b border-slate-700"
+            style={{ top: `${MAIN_HEADER_HEIGHT_PX}px`, height: `${SECONDARY_HEADER_HEIGHT_PX}px` }}
           >
             <div className="px-4 sm:px-6 lg:px-8 flex items-center h-full">
               <p>{secondaryHeaderText}</p>
@@ -104,12 +101,12 @@ export default function StrategicCockpitPage() {
           </div>
 
           {/* Main Content Area with Sidebar */}
-          <div className={`flex-1 flex`}>
+          <div className="flex-1 flex">
             <aside
-              className={`w-64 bg-slate-800 text-slate-200 flex flex-col justify-between sticky z-30`}
+              className="w-64 bg-brand-dark text-slate-200 flex flex-col justify-between sticky z-30"
               style={{
-                top: `${STICKY_TOP_OFFSET_CONTENT_AREA_PX}px`,
-                height: `calc(100vh - ${STICKY_TOP_OFFSET_CONTENT_AREA_PX}px)`,
+                top: `${TOTAL_HEADER_HEIGHT_PX}px`,
+                height: `calc(100vh - ${TOTAL_HEADER_HEIGHT_PX}px)`,
               }}
             >
               <div className="flex-grow px-4 pt-4">
@@ -117,8 +114,6 @@ export default function StrategicCockpitPage() {
                   <nav className="space-y-2">
                     {navItems.map((item) => {
                       const isActive = activeTab === item.id
-                      const isSimulation = item.id === "simulations"
-
                       return (
                         <Tooltip key={item.id}>
                           <TooltipTrigger asChild>
@@ -128,10 +123,8 @@ export default function StrategicCockpitPage() {
                               className={`w-full justify-start items-center space-x-3 py-2.5 rounded-lg transition-all duration-200 ease-in-out
                                 ${
                                   isActive
-                                    ? isSimulation
-                                      ? "bg-green-500/20 text-green-300 font-semibold"
-                                      : "bg-slate-700 text-white font-semibold"
-                                    : "text-slate-300 hover:bg-slate-700 hover:text-white"
+                                    ? "bg-brand-accent text-white font-semibold"
+                                    : "text-slate-300 hover:bg-brand-dark-secondary hover:text-white"
                                 }
                               `}
                             >
@@ -149,13 +142,12 @@ export default function StrategicCockpitPage() {
                 </TooltipProvider>
               </div>
 
-              {/* User Profile Section */}
-              <div className="mt-auto p-4 border-t border-slate-700">
+              <div className="mt-auto p-4 border-t border-brand-dark-secondary">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="ghost"
-                      className="w-full justify-start items-center space-x-3 py-2.5 rounded-lg hover:bg-slate-700"
+                      className="w-full justify-start items-center space-x-3 py-2.5 rounded-lg hover:bg-brand-dark-secondary"
                     >
                       <Avatar className="h-8 w-8">
                         <AvatarImage src="/placeholder.svg?width=32&height=32" />
@@ -190,8 +182,7 @@ export default function StrategicCockpitPage() {
               </div>
             </aside>
 
-            {/* Main Content Display */}
-            <main className="flex-1 p-6 bg-white overflow-y-auto">{renderContent()}</main>
+            <main className="flex-1 p-6 bg-brand-background overflow-y-auto">{renderContent()}</main>
           </div>
         </div>
       </div>
