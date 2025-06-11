@@ -82,9 +82,9 @@ export default function StrategicCockpitPage() {
                   <Image
                     src="/scc-logo-white.png"
                     alt="Supply Chain Companions Logo"
-                    width={48} // Adjusted for a more compact logo in header
-                    height={48}
-                    className="mr-3" // Reduced margin
+                    width={160}
+                    height={40}
+                    className="mr-4"
                     priority
                   />
                   <span className="font-semibold text-lg">SUPPLY CHAIN COMPANIONS</span>
