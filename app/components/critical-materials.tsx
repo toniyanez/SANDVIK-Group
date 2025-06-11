@@ -6,9 +6,10 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { AlertTriangle, CheckCircle, XCircle, Zap, Brain, TrendingUp } from "lucide-react"
+import { AlertTriangle, CheckCircle, XCircle, Zap, Brain, TrendingUp, Loader2, ListChecks, Info } from "lucide-react"
+import type { AiCriticalMaterialInsights } from "@/app/api/critical-materials-insights/route" // Import the type
 
-const criticalMaterials = {
+const criticalMaterialsData = {
   tungsten: {
     name: "Tungsten",
     status: "Vertically Integrated",
@@ -75,43 +76,59 @@ const criticalMaterials = {
   },
 }
 
-const aiInsights = [
-  {
-    title: "Supply Chain Vulnerability Assessment",
-    insight:
-      "Cobalt sourcing presents the highest risk due to geographic concentration in DRC and ethical concerns. Recommend accelerating alternative binder research and expanding certified supplier network.",
-    confidence: 92,
-    category: "Risk Analysis",
-  },
-  {
-    title: "Tungsten Competitive Advantage",
-    insight:
-      "Vertical integration in tungsten provides significant strategic advantage over competitors. WBH ownership reduces supply risk and cost volatility compared to external sourcing.",
-    confidence: 95,
-    category: "Strategic Advantage",
-  },
-  {
-    title: "Steel Supply Optimization",
-    insight:
-      "Post-Alleima divestment requires enhanced supplier relationship management. Consider regional steel partnerships to reduce tariff exposure and transportation costs.",
-    confidence: 88,
-    category: "Optimization",
-  },
-  {
-    title: "Circular Economy Opportunities",
-    insight:
-      "Expanding tungsten and cobalt recycling capabilities could reduce external dependency by 15-20%. Current recycling infrastructure provides foundation for scaling.",
-    confidence: 85,
-    category: "Sustainability",
-  },
-]
+type MaterialKey = keyof typeof criticalMaterialsData
+
+interface DynamicAiInsight {
+  title: string
+  insightText: string
+  category: string
+  confidence: number
+  actionableRecommendations: string[]
+  potentialImpact?: string
+}
 
 export default function CriticalMaterials() {
-  const [selectedMaterial, setSelectedMaterial] = useState("tungsten")
+  const [selectedMaterial, setSelectedMaterial] = useState<MaterialKey>("tungsten")
   const [showAIInsights, setShowAIInsights] = useState(false)
+  const [dynamicAiInsights, setDynamicAiInsights] = useState<DynamicAiInsight[]>([])
+  const [isLoadingAiInsights, setIsLoadingAiInsights] = useState(false)
+  const [aiInsightsError, setAiInsightsError] = useState<string | null>(null)
 
-  const generateAIRecommendations = () => {
-    setShowAIInsights(true)
+  const generateAIRecommendations = async () => {
+    setIsLoadingAiInsights(true)
+    setAiInsightsError(null)
+    setDynamicAiInsights([]) // Clear previous insights
+    setShowAIInsights(true) // Show the section immediately
+
+    try {
+      const materialToAnalyze = criticalMaterialsData[selectedMaterial]
+      const response = await fetch("/api/critical-materials-insights", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          materialName: materialToAnalyze.name,
+          materialData: materialToAnalyze,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response
+          .json()
+          .catch(() => ({ error: "Failed to fetch AI insights. Server returned an error." }))
+        throw new Error(errorData.error || `API request failed with status ${response.status}`)
+      }
+
+      const data: AiCriticalMaterialInsights = await response.json()
+      setDynamicAiInsights(data.insights)
+    } catch (error) {
+      console.error("Failed to generate AI insights:", error)
+      setAiInsightsError(error instanceof Error ? error.message : "An unknown error occurred.")
+      setDynamicAiInsights([]) // Ensure insights are cleared on error
+    } finally {
+      setIsLoadingAiInsights(false)
+    }
   }
 
   const getRiskColor = (level: string) => {
@@ -140,11 +157,13 @@ export default function CriticalMaterials() {
     }
   }
 
+  const currentMaterialData = criticalMaterialsData[selectedMaterial]
+
   return (
     <div className="space-y-6">
       {/* Material Overview */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {Object.entries(criticalMaterials).map(([key, material]) => {
+        {Object.entries(criticalMaterialsData).map(([key, material]) => {
           const RiskIcon = getRiskIcon(material.riskLevel)
           return (
             <Card
@@ -152,7 +171,12 @@ export default function CriticalMaterials() {
               className={`cursor-pointer transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${
                 selectedMaterial === key ? "ring-2 ring-brand-accent" : "ring-1 ring-transparent"
               }`}
-              onClick={() => setSelectedMaterial(key)}
+              onClick={() => {
+                setSelectedMaterial(key as MaterialKey)
+                setShowAIInsights(false) // Hide AI insights when material changes
+                setDynamicAiInsights([])
+                setAiInsightsError(null)
+              }}
             >
               <div className="flex flex-col space-y-1.5 p-6">
                 <CardTitle className="flex items-center justify-between text-brand-dark">
@@ -194,7 +218,7 @@ export default function CriticalMaterials() {
         <div className="flex flex-col space-y-1.5 p-6">
           <CardTitle className="flex items-center gap-2 text-brand-dark">
             <Zap className="h-5 w-5 text-brand-accent" />
-            {criticalMaterials[selectedMaterial as keyof typeof criticalMaterials].name} - Detailed Analysis
+            {currentMaterialData.name} - Detailed Analysis
           </CardTitle>
           <CardDescription>Comprehensive risk assessment and mitigation strategies</CardDescription>
         </div>
@@ -206,37 +230,31 @@ export default function CriticalMaterials() {
               <TabsTrigger value="mitigation">Mitigation</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="advantages" className="space-y-2">
-              {criticalMaterials[selectedMaterial as keyof typeof criticalMaterials].advantages.map(
-                (advantage, index) => (
-                  <div key={index} className="flex items-start gap-2 p-3 bg-green-50 rounded-lg">
-                    <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm text-green-800">{advantage}</span>
-                  </div>
-                ),
-              )}
+            <TabsContent value="advantages" className="space-y-2 pt-4">
+              {currentMaterialData.advantages.map((advantage, index) => (
+                <div key={index} className="flex items-start gap-2 p-3 bg-green-50 rounded-lg">
+                  <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                  <span className="text-sm text-green-800">{advantage}</span>
+                </div>
+              ))}
             </TabsContent>
 
-            <TabsContent value="challenges" className="space-y-2">
-              {criticalMaterials[selectedMaterial as keyof typeof criticalMaterials].challenges.map(
-                (challenge, index) => (
-                  <div key={index} className="flex items-start gap-2 p-3 bg-red-50 rounded-lg">
-                    <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm text-red-800">{challenge}</span>
-                  </div>
-                ),
-              )}
+            <TabsContent value="challenges" className="space-y-2 pt-4">
+              {currentMaterialData.challenges.map((challenge, index) => (
+                <div key={index} className="flex items-start gap-2 p-3 bg-red-50 rounded-lg">
+                  <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
+                  <span className="text-sm text-red-800">{challenge}</span>
+                </div>
+              ))}
             </TabsContent>
 
-            <TabsContent value="mitigation" className="space-y-2">
-              {criticalMaterials[selectedMaterial as keyof typeof criticalMaterials].mitigation.map(
-                (strategy, index) => (
-                  <div key={index} className="flex items-start gap-2 p-3 bg-blue-50 rounded-lg">
-                    <CheckCircle className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm text-blue-800">{strategy}</span>
-                  </div>
-                ),
-              )}
+            <TabsContent value="mitigation" className="space-y-2 pt-4">
+              {currentMaterialData.mitigation.map((strategy, index) => (
+                <div key={index} className="flex items-start gap-2 p-3 bg-blue-50 rounded-lg">
+                  <CheckCircle className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
+                  <span className="text-sm text-blue-800">{strategy}</span>
+                </div>
+              ))}
             </TabsContent>
           </Tabs>
         </CardContent>
@@ -247,7 +265,7 @@ export default function CriticalMaterials() {
         <div className="flex flex-col space-y-1.5 p-6">
           <CardTitle className="flex items-center gap-2 text-brand-dark">
             <Brain className="h-5 w-5 text-brand-accent" />
-            AI-Powered Supply Chain Insights
+            AI-Powered Supply Chain Insights for {currentMaterialData.name}
           </CardTitle>
           <CardDescription>Advanced analytics and recommendations for critical materials sourcing</CardDescription>
         </div>
@@ -255,31 +273,69 @@ export default function CriticalMaterials() {
           {!showAIInsights ? (
             <div className="text-center py-8">
               <Button
-                onClick={() => setShowAIInsights(true)}
+                onClick={generateAIRecommendations}
+                disabled={isLoadingAiInsights}
                 className="bg-brand-accent hover:bg-brand-accent-hover text-white flex items-center gap-2 shadow-lg hover:shadow-xl transition-shadow"
               >
-                <Brain className="h-4 w-4" />
-                Generate AI Insights & Recommendations
+                {isLoadingAiInsights ? <Loader2 className="h-4 w-4 animate-spin" /> : <Brain className="h-4 w-4" />}
+                {isLoadingAiInsights
+                  ? `Generating for ${currentMaterialData.name}...`
+                  : `Generate AI Insights for ${currentMaterialData.name}`}
               </Button>
               <p className="text-sm text-slate-500 mt-2">
-                Analyze supply chain data using OpenAI to identify risks and opportunities
+                Click to get real-time AI-powered insights and recommendations for {currentMaterialData.name}.
               </p>
             </div>
-          ) : (
+          ) : isLoadingAiInsights ? (
+            <div className="text-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-brand-accent mx-auto mb-2" />
+              <p className="text-slate-600">Generating AI insights for {currentMaterialData.name}...</p>
+            </div>
+          ) : aiInsightsError ? (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Error Generating Insights</AlertTitle>
+              <AlertDescription>{aiInsightsError}</AlertDescription>
+              <Button variant="outline" size="sm" onClick={generateAIRecommendations} className="mt-2">
+                Try Again
+              </Button>
+            </Alert>
+          ) : dynamicAiInsights.length > 0 ? (
             <div className="space-y-4">
-              {aiInsights.map((insight, index) => (
+              {dynamicAiInsights.map((insight, index) => (
                 <Alert key={index} className="border-l-4 border-brand-accent bg-blue-50/50">
                   <TrendingUp className="h-4 w-4 text-brand-accent" />
                   <AlertTitle className="flex items-center justify-between font-semibold text-brand-dark">
                     {insight.title}
                     <Badge variant="outline">{insight.confidence}% confidence</Badge>
                   </AlertTitle>
-                  <AlertDescription className="mt-2 text-slate-700">{insight.insight}</AlertDescription>
-                  <div className="mt-2">
+                  <AlertDescription className="mt-2 text-slate-700">
+                    <p className="mb-2">{insight.insightText}</p>
+                    {insight.potentialImpact && (
+                      <p className="text-xs italic text-slate-500 mb-2">Potential Impact: {insight.potentialImpact}</p>
+                    )}
+                    <div className="mt-2">
+                      <h5 className="text-xs font-semibold text-slate-600 mb-1 flex items-center">
+                        <ListChecks className="h-3 w-3 mr-1" />
+                        Actionable Recommendations:
+                      </h5>
+                      <ul className="list-disc list-inside pl-1 text-xs text-slate-600 space-y-0.5">
+                        {insight.actionableRecommendations.map((rec, recIndex) => (
+                          <li key={recIndex}>{rec}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </AlertDescription>
+                  <div className="mt-3">
                     <Badge variant="secondary">{insight.category}</Badge>
                   </div>
                 </Alert>
               ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-slate-500">
+              <Info className="h-8 w-8 mx-auto mb-2 text-slate-400" />
+              No AI insights were generated for {currentMaterialData.name} at this time.
             </div>
           )}
         </CardContent>
