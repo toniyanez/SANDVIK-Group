@@ -33,7 +33,7 @@ export default function StrategicCockpitPage() {
   // Near the top of the StrategicCockpitPage component
 
   // 1. Define header height for consistent use
-  const HEADER_HEIGHT_PX = 88 // Calculated based on content and padding
+  const HEADER_HEIGHT_PX = 80
   const HEADER_BORDER_PX = 1
   const STICKY_TOP_OFFSET_PX = HEADER_HEIGHT_PX + HEADER_BORDER_PX
 
@@ -66,10 +66,10 @@ export default function StrategicCockpitPage() {
               <div className="flex items-center">
                 <Image
                   src="/scc-logo-white.png"
-                  alt="Strategic Cockpit Logo"
-                  width={60}
-                  height={60}
-                  className="mr-4"
+                  alt="Supply Chain Companions Logo"
+                  width={291}
+                  height={64}
+                  className="mr-6"
                   priority
                 />
                 <div>
