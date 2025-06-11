@@ -87,7 +87,6 @@ export default function StrategicCockpitPage() {
                     className="mr-4"
                     priority
                   />
-                  <span className="font-semibold text-lg">SUPPLY CHAIN COMPANIONS</span>
                 </div>
                 <div className="flex-1 text-center">
                   <h2 className="text-2xl font-bold tracking-wider">Strategic Cockpit</h2>
@@ -208,12 +207,12 @@ export default function StrategicCockpitPage() {
                               variant="ghost"
                               onClick={() => setActiveTab(item.id)}
                               className={`w-full justify-start items-center space-x-3 py-2.5 rounded-lg transition-all duration-200 ease-in-out
-                          ${
-                            isActive
-                              ? "bg-brand-accent text-white font-semibold"
-                              : "text-slate-300 hover:bg-brand-dark-secondary hover:text-white"
-                          }
-                        `}
+                        ${
+                          isActive
+                            ? "bg-brand-accent text-white font-semibold"
+                            : "text-slate-300 hover:bg-brand-dark-secondary hover:text-white"
+                        }
+                      `}
                             >
                               <item.icon className="h-5 w-5" />
                               <span className="text-sm">{item.label}</span>
