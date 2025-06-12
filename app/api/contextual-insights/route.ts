@@ -246,14 +246,34 @@ async function generateStrategicInsights(
   icon: string,
   badgeClass: string,
   sourceUnit: string,
+  apiKey: string | undefined,
 ): Promise<ApiInsight[]> {
+  if (!apiKey) {
+    console.error(`AI strategic insight generation skipped for '${tabName}' tab: OpenAI API key is missing.`)
+    return [
+      {
+        iconName: "AlertTriangle",
+        title: `AI Insight Generation Skipped`,
+        description:
+          "Could not generate an AI-powered strategic insight because the OpenAI API key is not configured on the server.",
+        badgeText: "Configuration Error",
+        badgeVariant: "destructive",
+        source: "System AI Module",
+        confidence: "N/A",
+        isAI: true,
+        type: "ai",
+        timestamp: new Date().toISOString(),
+      },
+    ]
+  }
+
   const insights: ApiInsight[] = []
   const basePromptDetails = `For the 'detailedSources' field, list distinct categories of data sources. For each, provide 'name' (e.g., 'Global Economic Indicators') and 'contribution' (e.g., 'Offers macroeconomic context'). Aim for 2-3 source categories.`
 
   for (let i = 0; i < count; i++) {
     try {
       const { object: aiData } = await generateObject({
-        model: openai("gpt-4o"),
+        model: openai("gpt-4o", { apiKey }),
         schema: AiGeneratedInsightSchema,
         prompt: `Insight ${i + 1}/${count}: ${promptTemplate} ${basePromptDetails}`,
       })
@@ -566,6 +586,7 @@ export async function GET(request: NextRequest) {
       config.icon,
       config.badgeClass,
       config.sourceUnit,
+      process.env.OPENAI_API_KEY,
     )
     dynamicInsights.push(...generatedStrategicInsights)
   }

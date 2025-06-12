@@ -110,8 +110,14 @@ const navItems: NavItem[] = [
       { id: "competitive-landscape", label: "Competitive Landscape", icon: Swords, parentId: "overview" },
     ],
   },
-  { id: "manufacturing", label: "Manufacturing", icon: Building2 },
-  { id: "materials", label: "Critical Materials", icon: CriticalMaterialsIcon },
+  {
+    id: "manufacturing",
+    label: "Manufacturing",
+    icon: Building2,
+    subItems: [
+      { id: "materials", label: "Critical Materials", icon: CriticalMaterialsIcon, parentId: "manufacturing" },
+    ],
+  },
   { id: "logistics", label: "Logistics", icon: Truck },
   { id: "simulations", label: "Simulations", icon: Play },
 ]
@@ -149,7 +155,7 @@ export default function StrategicCockpitPage() {
 
     if (currentItem) {
       panelTitleText = `Insights for ${currentItem.label}`
-      if (parentItem && parentItem.id !== currentItem.id) {
+      if (parentItem && currentItem.parentId === parentItem.id) {
         headerText = `${parentItem.label} > ${currentItem.label} View - Sandvik Group Supply Chain Data`
       } else {
         headerText = `${currentItem.label} View - Sandvik Group Supply Chain Data`
@@ -215,9 +221,9 @@ export default function StrategicCockpitPage() {
             <CompetitiveLandscapeSection />
           </Suspense>
         )
-      case "manufacturing":
+      case "manufacturing": // This case handles the "Manufacturing" main view
         return <ManufacturingFootprint />
-      case "materials":
+      case "materials": // This case handles the "Critical Materials" sub-view
         return <CriticalMaterials />
       case "logistics":
         return <SupplyChainLogistics />
@@ -371,10 +377,29 @@ export default function StrategicCockpitPage() {
                               <Button
                                 variant="ghost"
                                 onClick={() => {
-                                  setActiveView(item.id)
-                                  setExpandedMainTab(item.id === expandedMainTab && item.subItems ? null : item.id)
+                                  // --- REVISED onClick LOGIC FOR MAIN ITEMS ---
+                                  setActiveView(item.id) // Always set active view to the item itself
+                                  if (item.subItems && item.subItems.length > 0) {
+                                    // If it has subitems, toggle its expansion state
+                                    setExpandedMainTab(isExpanded ? null : item.id)
+                                  } else {
+                                    // If no subitems, ensure other expanded items are collapsed
+                                    setExpandedMainTab(null)
+                                  }
+                                  // --- END OF REVISED onClick LOGIC ---
                                 }}
-                                className={`w-full justify-start items-center space-x-3 py-2.5 rounded-lg transition-all duration-200 ease-in-out ${isMainActive && !item.subItems?.some((sub) => sub.id === activeView) ? "bg-brand-accent text-white font-semibold" : "text-slate-300 hover:bg-brand-dark-secondary hover:text-white"}`}
+                                className={`w-full justify-start items-center space-x-3 py-2.5 rounded-lg transition-all duration-200 ease-in-out ${
+                                  // Style as active if item.id is activeView OR if a subItem is activeView and this is its parent
+                                  (
+                                    item.id === activeView &&
+                                      (!item.subItems ||
+                                        item.subItems.length === 0 ||
+                                        !item.subItems.some((sub) => sub.id === activeView))
+                                  ) ||
+                                  (item.subItems?.some((sub) => sub.id === activeView) && item.id === expandedMainTab)
+                                    ? "bg-brand-accent text-white font-semibold"
+                                    : "text-slate-300 hover:bg-brand-dark-secondary hover:text-white"
+                                }`}
                               >
                                 <item.icon className="h-5 w-5 flex-shrink-0" />
                                 <span className="text-sm flex-1 text-left">{item.label}</span>
@@ -399,8 +424,18 @@ export default function StrategicCockpitPage() {
                                     <TooltipTrigger asChild>
                                       <Button
                                         variant="ghost"
-                                        onClick={() => setActiveView(subItem.id)}
-                                        className={`w-full justify-start items-center space-x-3 py-2 rounded-lg transition-all duration-200 ease-in-out ${isSubActive ? "bg-brand-accent text-white font-semibold" : "text-slate-400 hover:bg-brand-dark-secondary hover:text-slate-200"}`}
+                                        onClick={() => {
+                                          setActiveView(subItem.id)
+                                          // Ensure parent remains expanded when subitem is clicked
+                                          if (subItem.parentId) {
+                                            setExpandedMainTab(subItem.parentId)
+                                          }
+                                        }}
+                                        className={`w-full justify-start items-center space-x-3 py-2 rounded-lg transition-all duration-200 ease-in-out ${
+                                          isSubActive
+                                            ? "bg-brand-accent text-white font-semibold"
+                                            : "text-slate-400 hover:bg-brand-dark-secondary hover:text-slate-200"
+                                        }`}
                                       >
                                         <subItem.icon className="h-4 w-4 flex-shrink-0 ml-1" />
                                         <span className="text-xs">{subItem.label}</span>
