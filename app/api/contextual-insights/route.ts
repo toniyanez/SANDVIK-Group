@@ -61,36 +61,6 @@ const AiGeneratedInsightSchema = z.object({
     ),
 })
 
-// Zod schema for AI-generated news items
-const AiGeneratedNewsItemSchema = z.object({
-  title: z.string().describe("A concise, factual news headline (max 15 words)."),
-  summary: z.string().describe("A brief, neutral summary of the news event (2-3 sentences)."),
-  sourceName: z
-    .string()
-    .describe(
-      "The perceived origin or type of news source (e.g., 'Industry Journal', 'Financial News Wire', 'Global News Outlet').",
-    ),
-  publishedDate: z
-    .string()
-    .datetime({ message: "Published date must be a valid ISO 8601 datetime string." })
-    .describe(
-      "An estimated publication date for this news item in ISO 8601 format, within the last 3 months from the current date.",
-    ),
-  relevanceScore: z
-    .number()
-    .min(0)
-    .max(100)
-    .describe("A score (0-100) indicating relevance to the specified context/tab."),
-  keywords: z
-    .array(z.string())
-    .optional()
-    .describe("Keywords related to the news item and its relevance to the tab's context."),
-})
-
-const AiGeneratedNewsFeedSchema = z.object({
-  newsItems: z.array(AiGeneratedNewsItemSchema).min(2).max(4).describe("A list of 2 to 4 relevant news items."),
-})
-
 // Type for API insights
 type DetailedSource = z.infer<typeof DetailedSourceSchema>
 
@@ -326,12 +296,177 @@ async function generateStrategicInsights(
   return insights
 }
 
+// Helper function to fetch real news from NewsAPI
+async function fetchRealNews(tab: string, apiKey: string | undefined): Promise<ApiInsight[]> {
+  if (!apiKey) {
+    console.warn("NewsAPI key is missing. Skipping real news fetching.")
+    return [
+      {
+        iconName: "AlertTriangle",
+        title: "News Feed Unavailable",
+        description: "NewsAPI key not configured. Real-time news cannot be fetched.",
+        badgeText: "Configuration Error",
+        badgeVariant: "destructive",
+        source: "System News Module",
+        confidence: "N/A",
+        isAI: false,
+        type: "news",
+        timestamp: new Date().toISOString(),
+      },
+    ]
+  }
+
+  let query = ""
+  const sandvikKeyword = '"Sandvik"' // Use quotes for exact phrase matching
+  const competitors = [
+    '"Epiroc"',
+    '"Komatsu"',
+    '"Caterpillar Mining"', // More specific for Caterpillar
+    '"FLSmidth"',
+    '"Metso Outotec"', // Updated name
+    '"Weir Group"',
+  ]
+  // Industry specific keywords to help focus the search
+  const industryKeywords = [
+    "mining equipment",
+    "rock processing",
+    "machining solutions",
+    "industrial technology",
+    "heavy machinery",
+    "automation",
+    "digitalization",
+    "sustainability in mining",
+    "quarterly results",
+    "annual report",
+    "strategic partnership",
+    "acquisition",
+    "new product",
+    "market share",
+    "supply chain",
+  ]
+
+  switch (tab) {
+    case "simulations":
+      query = `${sandvikKeyword} AND (simulation OR "scenario modeling" OR "digital twin" OR "supply chain optimization" OR "risk modeling")`
+      break
+    case "competitive-landscape":
+      const allCompanies = [sandvikKeyword, ...competitors].join(" OR ")
+      const industryContext = industryKeywords.join(" OR ")
+      // Prioritize news mentioning at least one of the companies AND related to their industry
+      query = `(${allCompanies}) AND (${industryContext})`
+      break
+    case "overview":
+      query = `${sandvikKeyword} AND (("corporate strategy") OR ("market performance") OR ("major developments") OR "annual report" OR "investor relations")`
+      break
+    case "financials":
+      query = `${sandvikKeyword} AND (("financial results") OR earnings OR "stock performance" OR "analyst ratings" OR "quarterly report")`
+      break
+    case "materials":
+      query = `${sandvikKeyword} AND (("critical materials") OR "raw materials" OR "commodity prices" OR tungsten OR cobalt OR "supply chain" OR sourcing OR "geopolitical risk")`
+      break
+    case "manufacturing":
+      query = `${sandvikKeyword} AND (manufacturing OR production OR factory OR automation OR "industry 4.0" OR "operational excellence")`
+      break
+    case "logistics":
+      query = `${sandvikKeyword} AND (logistics OR "supply chain" OR shipping OR freight OR "port congestion" OR "trade compliance")`
+      break
+    case "strategic-direction":
+      query = `${sandvikKeyword} AND ("strategic direction" OR innovation OR "research and development" OR "long-term goals" OR "market expansion")`
+      break
+    case "challenges-risks":
+      query = `${sandvikKeyword} AND (risk OR challenge OR "geopolitical tension" OR "economic headwinds" OR "mitigation strategy")`
+      break
+    default:
+      // Fallback for any other tab, try to make it relevant
+      query = `${sandvikKeyword} AND ("${tab.replace(/-/g, " ")}" OR ${industryKeywords.slice(0, 5).join(" OR ")})`
+  }
+
+  const oneMonthAgo = new Date()
+  oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1)
+  const fromDate = oneMonthAgo.toISOString().split("T")[0]
+
+  // NewsAPI recommends using 'domains' or 'sources' for higher quality results if possible,
+  // but for broad competitor analysis, keyword search is more practical.
+  // We use 'relevancy' for sortBy, but 'publishedAt' could also be an option.
+  const newsApiUrl = `https://newsapi.org/v2/everything?q=${encodeURIComponent(query)}&apiKey=${apiKey}&language=en&sortBy=relevancy&pageSize=3&from=${fromDate}`
+  console.log(`NewsAPI Query for tab '${tab}': ${query}`) // Log the query
+
+  try {
+    const response = await fetch(newsApiUrl)
+    if (!response.ok) {
+      const errorData = await response.json()
+      console.error("NewsAPI error:", response.status, errorData)
+      throw new Error(`NewsAPI request failed with status ${response.status}: ${errorData.message || "Unknown error"}`)
+    }
+    const data = await response.json()
+
+    if (!data.articles || data.articles.length === 0) {
+      return [
+        {
+          iconName: "Info",
+          title: "No Recent News Found",
+          description: `No recent news articles found for your query on "${tab}" via NewsAPI. Try broadening search terms if this persists.`,
+          badgeText: "No Results",
+          badgeVariant: "secondary",
+          source: "NewsAPI",
+          confidence: "N/A",
+          isAI: false,
+          type: "news",
+          timestamp: new Date().toISOString(),
+        },
+      ]
+    }
+
+    return data.articles.map(
+      (article: any): ApiInsight => ({
+        iconName: "Newspaper",
+        title: article.title || "Untitled Article",
+        description:
+          article.description ||
+          article.content?.substring(0, 200) + (article.content?.length > 200 ? "..." : "") ||
+          "No description available.",
+        badgeText: "Recent News",
+        badgeVariant: "outline",
+        source: article.source?.name || "Unknown Source",
+        confidence: `From ${article.source?.name || "NewsAPI"}`, // Or some other metric if available
+        isAI: false,
+        type: "news",
+        timestamp: article.publishedAt || new Date().toISOString(),
+        actionLink: article.url
+          ? { href: article.url, text: "Read Full Article", iconName: "ExternalLink" }
+          : undefined,
+        detailedSources: [
+          { name: article.source?.name || "NewsAPI", contribution: "Provides real-time news updates." },
+        ],
+        sourcesCheckedCount: 1,
+      }),
+    )
+  } catch (error) {
+    console.error(`Failed to fetch real news for tab '${tab}':`, error)
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    return [
+      {
+        iconName: "AlertTriangle",
+        title: "News Feed Error",
+        description: `Could not fetch real-time news for ${tab}. ${errorMessage}`,
+        badgeText: "Error",
+        badgeVariant: "destructive",
+        source: "System News Module",
+        confidence: "N/A",
+        isAI: false,
+        type: "news",
+        timestamp: new Date().toISOString(),
+      },
+    ]
+  }
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const tabParam = searchParams.get("tab")
   const tab = tabParam ? tabParam.trim() : null
 
-  const currentTimestamp = new Date().toISOString()
+  // const currentTimestamp = new Date().toISOString() // Not used directly here anymore
 
   if (!tab || !insightsDatabase[tab]) {
     const validTabs = Object.keys(insightsDatabase).join(", ")
@@ -349,7 +484,7 @@ export async function GET(request: NextRequest) {
     )
   }
 
-  const dynamicInsights: ApiInsight[] = [...insightsDatabase[tab]]
+  const dynamicInsights: ApiInsight[] = [...insightsDatabase[tab]] // Start with manual insights
 
   const strategicInsightPrompts: Record<
     string,
@@ -385,7 +520,7 @@ export async function GET(request: NextRequest) {
     },
     "competitive-landscape": {
       prompt:
-        "You are a competitive intelligence analyst for Sandvik. Analyze a comprehensive and recently updated dataset of Sandvik's key competitors across its main business areas (SMR, SRP, SMM). This data includes competitor names, global revenues, country of origin, company size, detailed strengths, weaknesses, differentiators, risks, and opportunities. Based on this rich dataset, provide a key strategic insight regarding emerging competitive threats, opportunities for Sandvik to differentiate, or notable shifts in market dynamics (e.g., based on revenue trends or SWOT analysis). Focus on insights that would be valuable for strategic decision-making.",
+        "You are a competitive intelligence analyst for Sandvik. Analyze a comprehensive and recently updated dataset of Sandvik's key competitors (Epiroc, Komatsu, Caterpillar Mining, FLSmidth, Metso Outotec, Weir Group) across its main business areas (SMR, SRP, SMM). This data includes competitor names, global revenues, country of origin, company size, detailed strengths, weaknesses, differentiators, risks, and opportunities. Based on this rich dataset, provide a key strategic insight regarding emerging competitive threats, opportunities for Sandvik to differentiate, or notable shifts in market dynamics (e.g., based on revenue trends or SWOT analysis). Focus on insights that would be valuable for strategic decision-making.",
       icon: "Swords",
       badgeClass: "bg-teal-500 text-white",
       sourceUnit: "AI Competitive Intelligence Unit",
@@ -411,14 +546,23 @@ export async function GET(request: NextRequest) {
       badgeClass: "bg-blue-500 text-white",
       sourceUnit: "AI Logistics Analytics",
     },
+    simulations: {
+      prompt:
+        "You are a supply chain simulation expert for Sandvik. Based on potential global events (e.g., trade wars, pandemics, port congestions, material shortages) and their impact on revenue, margin, and costs, provide a key strategic insight or recommendation derived from simulation modeling.",
+      icon: "Cpu",
+      badgeClass: "bg-cyan-500 text-white",
+      sourceUnit: "AI Simulation & Modeling Unit",
+    },
   }
 
   if (strategicInsightPrompts[tab]) {
     const config = strategicInsightPrompts[tab]
+    // Generate fewer AI strategic insights if we have real news
+    const aiInsightCount = 1
     const generatedStrategicInsights = await generateStrategicInsights(
       tab,
       config.prompt,
-      2,
+      aiInsightCount,
       config.icon,
       config.badgeClass,
       config.sourceUnit,
@@ -426,60 +570,18 @@ export async function GET(request: NextRequest) {
     dynamicInsights.push(...generatedStrategicInsights)
   }
 
-  try {
-    const threeMonthsAgo = new Date()
-    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3)
-    const baseDateRange = `(published between ${threeMonthsAgo.toISOString().split("T")[0]} and ${new Date().toISOString().split("T")[0]})`
-
-    // Dynamically create the news prompt based on the tab
-    let newsPrompt: string
-    if (tab === "competitive-landscape") {
-      newsPrompt = `You are an AI news summarizer. Provide 2-4 recent news items ${baseDateRange} highly relevant to the competitive landscape for Sandvik. Include news about Sandvik itself, but also specifically search for recent news about its key competitors: Epiroc, Komatsu, Caterpillar, FLSmidth, Metso, and Weir Group. Focus on announcements, financial results, new products, or strategic shifts. For each news item, provide a title, a brief summary, a plausible source name, an estimated published date in ISO 8601 format, a relevance score (0-100), and 2-3 keywords.`
-    } else {
-      newsPrompt = `You are an AI news summarizer. Provide 2-4 recent news items ${baseDateRange} highly relevant to Sandvik's operations or market context concerning '${tab}'. Focus on factual summaries. For each news item, provide a title, a brief summary, a plausible source name, an estimated published date in ISO 8601 format, a relevance score (0-100), and 2-3 keywords. Ensure dates are distinct and recent.`
-    }
-
-    const { object: aiNewsFeed } = await generateObject({
-      model: openai("gpt-4o"),
-      schema: AiGeneratedNewsFeedSchema,
-      prompt: newsPrompt,
-    })
-
-    aiNewsFeed.newsItems.forEach((newsItem) => {
-      dynamicInsights.push({
-        iconName: "Newspaper",
-        title: newsItem.title,
-        description: newsItem.summary,
-        badgeText: "Recent News",
-        badgeVariant: "outline",
-        source: newsItem.sourceName,
-        confidence: `Relevance: ${newsItem.relevanceScore}%`,
-        isAI: true,
-        type: "news",
-        timestamp: newsItem.publishedDate,
-        detailedSources: [{ name: newsItem.sourceName, contribution: "Provides recent news updates." }],
-        sourcesCheckedCount: 1,
-      })
-    })
-  } catch (error) {
-    console.error(`AI news generation failed for tab '${tab}':`, error)
-    dynamicInsights.push({
-      iconName: "AlertTriangle",
-      title: "AI News Generation Failed",
-      description: `Could not generate AI-powered news updates for ${tab} at this time. Error: ${error instanceof Error ? error.message : String(error)}`,
-      badgeText: "Error",
-      badgeVariant: "destructive",
-      source: "System AI News Module",
-      confidence: "N/A",
-      isAI: true,
-      type: "news",
-      timestamp: currentTimestamp,
-    })
-  }
+  // Fetch real news using NewsAPI
+  const realNewsInsights = await fetchRealNews(tab, process.env.NEWS_API_KEY)
+  dynamicInsights.push(...realNewsInsights)
 
   dynamicInsights.sort((a, b) => {
+    // Prioritize news slightly if timestamps are very close, otherwise sort by timestamp
     if (a.timestamp && b.timestamp) {
-      return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      const dateA = new Date(a.timestamp).getTime()
+      const dateB = new Date(b.timestamp).getTime()
+      if (dateB !== dateA) return dateB - dateA
+      if (a.type === "news" && b.type !== "news") return -1
+      if (b.type === "news" && a.type !== "news") return 1
     }
     if (a.timestamp) return -1
     if (b.timestamp) return 1
