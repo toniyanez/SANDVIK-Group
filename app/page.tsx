@@ -85,16 +85,16 @@ const CompetitiveLandscapeSection = dynamic(() => import("@/app/components/compe
   ),
 })
 
-// Remove this problematic import:
-// const BusinessAnalystNews = dynamic(() => import("@/app/components/business-analyst-news").catch(() => () => null), {
-//   ssr: false,
-//   loading: () => (
-//     <div className="flex items-center justify-center min-h-[400px]">
-//       <Loader2 className="h-8 w-8 animate-spin text-brand-accent" />
-//       <p className="ml-2 text-lg text-slate-500">Loading Business Analyst News...</p>
-//     </div>
-//   ),
-// })
+// Dynamically import BusinessAnalystNews if it exists
+const BusinessAnalystNews = dynamic(() => import("@/app/components/business-analyst-news").catch(() => () => null), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center min-h-[400px]">
+      <Loader2 className="h-8 w-8 animate-spin text-brand-accent" />
+      <p className="ml-2 text-lg text-slate-500">Loading Business Analyst News...</p>
+    </div>
+  ),
+})
 
 interface NavSubItem {
   id: string
@@ -235,13 +235,20 @@ export default function StrategicCockpitPage() {
             <CompetitiveLandscapeSection />
           </Suspense>
         )
-      // Replace the business-analyst-news case in renderContent() with:
       case "business-analyst-news":
-        return (
-          <div className="p-8 text-center">
-            <h2 className="text-2xl font-bold text-slate-700 mb-4">Business Analyst News</h2>
-            <p className="text-slate-500">This section is under development.</p>
-          </div>
+        return BusinessAnalystNews ? ( // Check if component exists
+          <Suspense
+            fallback={
+              <div className="flex items-center justify-center min-h-[400px]">
+                <Loader2 className="h-8 w-8 animate-spin text-brand-accent" />
+                <p className="ml-2 text-lg text-slate-500">Loading Business Analyst News...</p>
+              </div>
+            }
+          >
+            <BusinessAnalystNews />
+          </Suspense>
+        ) : (
+          <div className="p-4 text-center text-slate-500">Business Analyst News component not available.</div>
         )
       case "manufacturing":
         return <ManufacturingFootprint />
