@@ -44,6 +44,7 @@ import ContextualInsightsPanel from "@/app/components/contextual-insights-panel"
 import SupplyChainNewsFeed from "@/app/components/supply-chain-news-feed"
 import dynamic from "next/dynamic"
 import { cn } from "@/lib/utils"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 const FinancialsSection = dynamic(() => import("@/app/components/financials-section"), {
   ssr: false,
@@ -484,7 +485,37 @@ export default function StrategicCockpitPage() {
                 </TooltipProvider>
               </div>
             </aside>
-            <main className="flex-1 p-6 bg-brand-background overflow-y-auto">{renderContent()}</main>
+            <main className="flex-1 p-6 bg-brand-background overflow-y-auto">
+              <Tabs value={activeView} onValueChange={setActiveView} className="w-full">
+                <TabsList className="grid w-full grid-cols-5 mb-6">
+                  <TabsTrigger value="overview">Overview</TabsTrigger>
+                  <TabsTrigger value="manufacturing">Manufacturing</TabsTrigger>
+                  <TabsTrigger value="logistics">Logistics</TabsTrigger>
+                  <TabsTrigger value="simulations">Simulations</TabsTrigger>
+                  <TabsTrigger value="news">News</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="overview">
+                  <SandvikOverview />
+                </TabsContent>
+
+                <TabsContent value="manufacturing">
+                  <ManufacturingFootprint />
+                </TabsContent>
+
+                <TabsContent value="logistics">
+                  <SupplyChainLogistics />
+                </TabsContent>
+
+                <TabsContent value="simulations">
+                  <SupplyChainSimulations />
+                </TabsContent>
+
+                <TabsContent value="news">
+                  <SupplyChainNewsFeed />
+                </TabsContent>
+              </Tabs>
+            </main>
             {showContextualInsightsPanel && (
               <aside
                 className={cn(
