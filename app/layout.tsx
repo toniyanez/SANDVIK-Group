@@ -9,7 +9,7 @@ const inter = Inter({ subsets: ["latin"] })
 export const metadata: Metadata = {
   title: "Strategic Cockpit - Sandvik Supply Chain",
   description: "AI-powered supply chain intelligence and strategic decision support",
-    generator: 'v0.dev'
+  generator: "v0.dev",
 }
 
 export default function RootLayout({
