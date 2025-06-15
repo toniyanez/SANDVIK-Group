@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardTitle, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -99,18 +99,61 @@ export default function SupplyChainSimulations() {
   const [simulationResult, setSimulationResult] = useState<any>(null)
   const [isRunningSimulation, setIsRunningSimulation] = useState(false)
   const [dynamicScenarios, setDynamicScenarios] = useState<any[]>([])
-
   const [scenarioPrompt, setScenarioPrompt] = useState<string>("")
   const [generatedScenario, setGeneratedScenario] = useState<any>(null)
   const [isGeneratingScenario, setIsGeneratingScenario] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+
+  // Add error boundary effect
+  useEffect(() => {
+    const handleError = (event: ErrorEvent) => {
+      console.error("Component error:", event.error)
+      setError(event.error?.message || "Unknown error occurred")
+    }
+
+    window.addEventListener("error", handleError)
+    return () => window.removeEventListener("error", handleError)
+  }, [])
+
+  useEffect(() => {
+    // Simulate component initialization
+    const timer = setTimeout(() => setIsLoading(false), 100)
+    return () => clearTimeout(timer)
+  }, [])
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-green-600" />
+        <span className="ml-2 text-gray-600">Loading simulations...</span>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="p-8 text-center">
+        <h2 className="text-2xl font-bold text-red-600 mb-4">Component Error</h2>
+        <p className="text-red-500 mb-4">{error}</p>
+        <Button onClick={() => setError(null)} className="bg-blue-600 hover:bg-blue-700">
+          Retry
+        </Button>
+      </div>
+    )
+  }
 
   const runSimulation = async () => {
     if (!selectedScenario) return
 
     setIsRunningSimulation(true)
+    setError(null)
     try {
       const allScenarios = [...predefinedScenarios, ...dynamicScenarios]
       const scenario = allScenarios.find((s) => s.id === selectedScenario)
+
+      console.log("Running simulation for:", scenario?.name)
+
       const response = await fetch("/api/supply-chain-simulation", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -120,7 +163,14 @@ export default function SupplyChainSimulations() {
           parameters: { ...scenario?.parameters, ...customParameters },
         }),
       })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
       const data = await response.json()
+      console.log("Simulation response:", data)
+
       if (data.error) {
         console.error("Simulation API Error:", data.error, data.details)
         setSimulationResult({ error: data.error, details: data.details, scenarioName: scenario?.name || "Error" })
@@ -131,6 +181,7 @@ export default function SupplyChainSimulations() {
       console.error("Simulation failed:", error)
       const allScenarios = [...predefinedScenarios, ...dynamicScenarios]
       const scenario = allScenarios.find((s) => s.id === selectedScenario)
+      setError(`Simulation failed: ${error instanceof Error ? error.message : "Unknown error"}`)
       setSimulationResult({ error: "Failed to run simulation.", scenarioName: scenario?.name || "Error" })
     } finally {
       setIsRunningSimulation(false)
@@ -141,20 +192,29 @@ export default function SupplyChainSimulations() {
     if (!scenarioPrompt.trim()) return
     setIsGeneratingScenario(true)
     setGeneratedScenario(null)
-    await new Promise((resolve) => setTimeout(resolve, 1500))
-    setGeneratedScenario({
-      name: "AI Generated: " + scenarioPrompt.substring(0, 30) + "...",
-      description:
-        "This is an AI generated scenario based on your prompt. It includes potential impacts on supply chain, material costs, and market demand.",
-      category: "AI Generated",
-      severity: "Medium",
-      parameters: {
-        shippingCosts: Math.floor(Math.random() * 50) + 100,
-        materialCosts: Math.floor(Math.random() * 60) + 100,
-        demandFluctuation: Math.floor(Math.random() * 40) - 20,
-      },
-    })
-    setIsGeneratingScenario(false)
+    setError(null)
+
+    try {
+      console.log("Generating scenario for prompt:", scenarioPrompt)
+      await new Promise((resolve) => setTimeout(resolve, 1500))
+      setGeneratedScenario({
+        name: "AI Generated: " + scenarioPrompt.substring(0, 30) + "...",
+        description:
+          "This is an AI generated scenario based on your prompt. It includes potential impacts on supply chain, material costs, and market demand.",
+        category: "AI Generated",
+        severity: "Medium",
+        parameters: {
+          shippingCosts: Math.floor(Math.random() * 50) + 100,
+          materialCosts: Math.floor(Math.random() * 60) + 100,
+          demandFluctuation: Math.floor(Math.random() * 40) - 20,
+        },
+      })
+    } catch (error) {
+      console.error("Scenario generation failed:", error)
+      setError(`Scenario generation failed: ${error instanceof Error ? error.message : "Unknown error"}`)
+    } finally {
+      setIsGeneratingScenario(false)
+    }
   }
 
   const getSeverityColor = (severity: string) => {
