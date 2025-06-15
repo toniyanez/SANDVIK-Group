@@ -1,24 +1,23 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  LineChart,
-  Line,
-} from "recharts"
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title as ChartJsTitle,
+  Tooltip as ChartJsTooltip,
+  Legend as ChartJsLegend,
+  ArcElement,
+  PointElement,
+  LineElement,
+} from "chart.js"
+import { Bar, Doughnut, Line as ChartJsLine } from "react-chartjs-2"
 import {
   Truck,
   Ship,
@@ -31,7 +30,21 @@ import {
   Loader2,
   Zap,
   AlertTriangle,
+  Calendar,
+  ExternalLink,
 } from "lucide-react"
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  ChartJsTitle,
+  ChartJsTooltip,
+  ChartJsLegend,
+  ArcElement,
+  PointElement,
+  LineElement,
+)
 
 const transportModes = [
   {
@@ -72,29 +85,222 @@ const transportModes = [
   },
 ]
 
-const logisticsCosts = [
-  { route: "Sweden → USA", heavy: 15000, tools: 8, mode: "Sea/Air" },
-  { route: "China → Europe", heavy: 12000, tools: 6, mode: "Sea/Air" },
-  { route: "Australia → USA", heavy: 18000, tools: 10, mode: "Sea/Air" },
-  { route: "Germany → China", heavy: 14000, tools: 7, mode: "Sea/Air" },
-  { route: "India → USA", heavy: 16000, tools: 9, mode: "Sea/Air" },
-]
+const logisticsCostsData = {
+  labels: ["Sweden → USA", "China → Europe", "Australia → USA", "Germany → China", "India → USA"],
+  datasets: [
+    {
+      label: "Heavy Equipment ($)",
+      data: [15000, 12000, 18000, 14000, 16000],
+      backgroundColor: "rgba(54, 162, 235, 0.6)",
+      borderColor: "rgba(54, 162, 235, 1)",
+      borderWidth: 1,
+      yAxisID: "y",
+    },
+    {
+      label: "Tools ($/kg)",
+      data: [8, 6, 10, 7, 9],
+      backgroundColor: "rgba(75, 192, 192, 0.6)",
+      borderColor: "rgba(75, 192, 192, 1)",
+      borderWidth: 1,
+      yAxisID: "y1",
+    },
+  ],
+}
 
-const modeDistribution = [
-  { name: "Sea Freight", value: 65, color: "#0088FE" },
-  { name: "Road Freight", value: 20, color: "#00C49F" },
-  { name: "Air Freight", value: 10, color: "#FFBB28" },
-  { name: "Rail Freight", value: 5, color: "#FF8042" },
-]
+const modeDistributionData = {
+  labels: ["Sea Freight", "Road Freight", "Air Freight", "Rail Freight"],
+  datasets: [
+    {
+      label: "Transport Mode Distribution (%)",
+      data: [65, 20, 10, 5],
+      backgroundColor: ["#0088FE", "#00C49F", "#FFBB28", "#FF8042"],
+      borderColor: ["#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF"],
+      borderWidth: 2,
+    },
+  ],
+}
+
+const barChartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  scales: {
+    x: {
+      ticks: {
+        font: {
+          size: 10,
+        },
+      },
+    },
+    y: {
+      type: "linear" as const,
+      display: true,
+      position: "left" as const,
+      title: {
+        display: true,
+        text: "Heavy Equipment ($)",
+      },
+    },
+    y1: {
+      type: "linear" as const,
+      display: true,
+      position: "right" as const,
+      title: {
+        display: true,
+        text: "Tools ($/kg)",
+      },
+      grid: {
+        drawOnChartArea: false,
+      },
+    },
+  },
+  plugins: {
+    legend: {
+      position: "top" as const,
+    },
+  },
+}
+
+const doughnutChartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: {
+      position: "top" as const,
+    },
+    tooltip: {
+      callbacks: {
+        label: (context: any) => {
+          let label = context.label || ""
+          if (label) {
+            label += ": "
+          }
+          if (context.parsed !== null) {
+            label += context.parsed + "%"
+          }
+          return label
+        },
+      },
+    },
+  },
+}
+
+// Base options for the Digital Twin Line Chart
+const baseLineChartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: {
+      position: "top" as const,
+    },
+    tooltip: {
+      mode: "index" as const,
+      intersect: false,
+    },
+  },
+  interaction: {
+    mode: "index" as const,
+    intersect: false,
+  },
+}
+
+// Helper to transform projection data for Chart.js Line chart
+const transformProjectionData = (projections: any[]) => {
+  if (!projections || projections.length === 0) {
+    return { labels: [], datasets: [] }
+  }
+
+  const labels = []
+  const today = new Date()
+  for (let i = 0; i < 6; i++) {
+    const date = new Date(today.getFullYear(), today.getMonth() + i, 1)
+    labels.push(date.toLocaleString("default", { month: "short", year: "numeric" }))
+  }
+
+  return {
+    labels,
+    datasets: [
+      {
+        label: "Tariff Impact",
+        data: projections.map((p) => p.tariffImpact),
+        borderColor: "#ff7300", // Orange
+        backgroundColor: "rgba(255, 115, 0, 0.5)",
+        tension: 0.1,
+        yAxisID: "yRiskFactors",
+      },
+      {
+        label: "Logistics Cost",
+        data: projections.map((p) => p.logisticsCost),
+        borderColor: "#00C49F", // Green (matching pie chart)
+        backgroundColor: "rgba(0, 196, 159, 0.5)",
+        tension: 0.1,
+        yAxisID: "yRiskFactors",
+      },
+      {
+        label: "Material Prices",
+        data: projections.map((p) => p.materialPrice),
+        borderColor: "#FFBB28", // Yellow (matching pie chart)
+        backgroundColor: "rgba(255, 187, 40, 0.5)",
+        tension: 0.1,
+        yAxisID: "yRiskFactors",
+      },
+      {
+        label: "Geopolitical Risk",
+        data: projections.map((p) => p.geopolitical),
+        borderColor: "#FF8042", // Red/Orange (matching pie chart)
+        backgroundColor: "rgba(255, 128, 66, 0.5)",
+        tension: 0.1,
+        yAxisID: "yRiskFactors",
+      },
+      {
+        label: "Baseline",
+        data: projections.map((p) => p.baseline),
+        borderColor: "#8884d8", // Purple
+        backgroundColor: "rgba(136, 132, 216, 0.5)",
+        tension: 0.1,
+        yAxisID: "yBaselineCombined",
+      },
+      {
+        label: "Combined Risk",
+        data: projections.map((p) => p.combinedRisk),
+        borderColor: "#333333", // Dark Grey/Black
+        backgroundColor: "rgba(51, 51, 51, 0.5)",
+        tension: 0.1,
+        borderDash: [5, 5],
+        borderWidth: 2,
+        yAxisID: "yBaselineCombined",
+      },
+    ],
+  }
+}
+
+// Helper function to format confidence values properly
+const formatConfidence = (confidence: number): string => {
+  if (typeof confidence !== "number") return "0"
+
+  // If confidence is a decimal (0.85), convert to percentage (85)
+  if (confidence < 1) {
+    return Math.round(confidence * 100).toString()
+  }
+
+  // If confidence is already a whole number (85), just round it
+  return Math.round(confidence).toString()
+}
 
 export default function SupplyChainLogistics() {
   const [aiAnalysis, setAiAnalysis] = useState<any>(null)
   const [digitalTwinData, setDigitalTwinData] = useState<any>(null)
   const [isLoadingAnalysis, setIsLoadingAnalysis] = useState(false)
   const [isLoadingTwin, setIsLoadingTwin] = useState(false)
+  const [isClient, setIsClient] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
 
   const generateAIAnalysis = async () => {
     setIsLoadingAnalysis(true)
+    setError(null)
     try {
       const response = await fetch("/api/ai-analysis", {
         method: "POST",
@@ -108,10 +314,21 @@ export default function SupplyChainLogistics() {
           },
         }),
       })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
       const data = await response.json()
+
+      if (data.error) {
+        throw new Error(data.error)
+      }
+
       setAiAnalysis(data)
     } catch (error) {
       console.error("Failed to generate AI analysis:", error)
+      setError(error instanceof Error ? error.message : "Failed to generate AI analysis")
     } finally {
       setIsLoadingAnalysis(false)
     }
@@ -119,6 +336,7 @@ export default function SupplyChainLogistics() {
 
   const generateDigitalTwin = async () => {
     setIsLoadingTwin(true)
+    setError(null)
     try {
       const response = await fetch("/api/digital-twin", {
         method: "POST",
@@ -128,17 +346,99 @@ export default function SupplyChainLogistics() {
           factors: ["tariffs", "logistics", "materials", "geopolitical"],
         }),
       })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
       const data = await response.json()
+
+      if (data.error) {
+        throw new Error(data.error)
+      }
+
       setDigitalTwinData(data)
     } catch (error) {
       console.error("Failed to generate digital twin:", error)
+      setError(error instanceof Error ? error.message : "Failed to generate digital twin analysis")
     } finally {
       setIsLoadingTwin(false)
     }
   }
 
+  const lineChartData = useMemo(() => {
+    if (!digitalTwinData?.projections) return { labels: [], datasets: [] }
+    return transformProjectionData(digitalTwinData.projections)
+  }, [digitalTwinData])
+
+  const dynamicLineChartOptions = useMemo(() => {
+    if (!digitalTwinData?.projections || lineChartData.datasets.length === 0) return baseLineChartOptions
+
+    const riskFactorDatasets = lineChartData.datasets.filter((ds) => ds.yAxisID === "yRiskFactors")
+    const baselineCombinedDatasets = lineChartData.datasets.filter((ds) => ds.yAxisID === "yBaselineCombined")
+
+    const allRiskFactorData = riskFactorDatasets.flatMap((dataset) => dataset.data as number[])
+    const minRiskFactorVal = Math.min(...allRiskFactorData)
+    const maxRiskFactorVal = Math.max(...allRiskFactorData)
+    const riskFactorPadding = (maxRiskFactorVal - minRiskFactorVal) * 0.1 || 2 // Min padding of 2
+
+    const allBaselineCombinedData = baselineCombinedDatasets.flatMap((dataset) => dataset.data as number[])
+    const minBaselineCombinedVal = Math.min(...allBaselineCombinedData)
+    const maxBaselineCombinedVal = Math.max(...allBaselineCombinedData)
+    const baselineCombinedPadding = (maxBaselineCombinedVal - minBaselineCombinedVal) * 0.1 || 5 // Min padding of 5
+
+    return {
+      ...baseLineChartOptions,
+      scales: {
+        x: {
+          title: {
+            display: true,
+            text: "Month",
+          },
+        },
+        yRiskFactors: {
+          type: "linear" as const,
+          display: true,
+          position: "left" as const,
+          min: Math.floor(minRiskFactorVal - riskFactorPadding),
+          max: Math.ceil(maxRiskFactorVal + riskFactorPadding),
+          title: {
+            display: true,
+            text: "Individual Risk Factor Impact",
+          },
+          grid: {
+            drawOnChartArea: true, // Main grid lines
+          },
+        },
+        yBaselineCombined: {
+          type: "linear" as const,
+          display: true,
+          position: "right" as const,
+          min: Math.floor(minBaselineCombinedVal - baselineCombinedPadding),
+          max: Math.ceil(maxBaselineCombinedVal + baselineCombinedPadding),
+          title: {
+            display: true,
+            text: "Baseline / Combined Risk Index",
+          },
+          grid: {
+            drawOnChartArea: false, // No grid lines for secondary axis
+          },
+        },
+      },
+    }
+  }, [digitalTwinData, lineChartData])
+
   return (
     <div className="space-y-6">
+      {/* Error Display */}
+      {error && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
       {/* Transport Modes Overview */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {transportModes.map((mode, index) => {
@@ -191,9 +491,23 @@ export default function SupplyChainLogistics() {
         <CardContent>
           {!aiAnalysis ? (
             <div className="text-center py-8">
-              <Button onClick={generateAIAnalysis} disabled={isLoadingAnalysis} className="flex items-center gap-2">
-                {isLoadingAnalysis ? <Loader2 className="h-4 w-4 animate-spin" /> : <Brain className="h-4 w-4" />}
-                {isLoadingAnalysis ? "Analyzing with OpenAI..." : "Generate AI-Powered Analysis"}
+              <Button
+                onClick={generateAIAnalysis}
+                disabled={isLoadingAnalysis}
+                className="flex items-center gap-2"
+                size="lg"
+              >
+                {isLoadingAnalysis ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Analyzing with OpenAI...
+                  </>
+                ) : (
+                  <>
+                    <Brain className="h-4 w-4" />
+                    Generate AI-Powered Analysis
+                  </>
+                )}
               </Button>
               <p className="text-sm text-gray-500 mt-2">
                 Using OpenAI GPT-4 to analyze current trade policies and generate strategic recommendations
@@ -201,6 +515,20 @@ export default function SupplyChainLogistics() {
             </div>
           ) : (
             <div className="space-y-6">
+              {/* Reset button */}
+              <div className="flex justify-end mb-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setAiAnalysis(null)}
+                  className="flex items-center gap-2"
+                >
+                  <Brain className="h-3 w-3" />
+                  Generate New Analysis
+                </Button>
+              </div>
+
+              {/* Rest of the existing AI analysis content remains the same */}
               {/* AI-Generated Scenarios */}
               <div>
                 <h4 className="font-semibold mb-4 flex items-center gap-2">
@@ -215,18 +543,18 @@ export default function SupplyChainLogistics() {
                         <div className="flex gap-2">
                           <Badge
                             variant={
-                              scenario.impact === "Critical Risk"
+                              scenario.impact === "Critical"
                                 ? "destructive"
-                                : scenario.impact === "High Risk"
+                                : scenario.impact === "High"
                                   ? "destructive"
-                                  : scenario.impact === "Medium Risk"
+                                  : scenario.impact === "Medium"
                                     ? "default"
                                     : "secondary"
                             }
                           >
-                            {scenario.impact}
+                            {scenario.impact} impact
                           </Badge>
-                          <Badge variant="outline">{scenario.probability}% probability</Badge>
+                          <Badge variant="outline">{scenario.probability} probability</Badge>
                         </div>
                       </div>
                       <div className="grid grid-cols-3 gap-2 text-sm mb-3">
@@ -311,7 +639,7 @@ export default function SupplyChainLogistics() {
                           >
                             {response.priority}
                           </Badge>
-                          <Badge variant="outline">{response.confidence}% confidence</Badge>
+                          <Badge variant="outline">{formatConfidence(response.confidence)}% confidence</Badge>
                         </div>
                       </div>
 
@@ -378,6 +706,35 @@ export default function SupplyChainLogistics() {
             </div>
           ) : (
             <div className="space-y-6">
+              {/* News Metadata */}
+              {digitalTwinData.newsMetadata && (
+                <div className="bg-blue-50 p-3 rounded-lg">
+                  <div className="flex items-center gap-2 text-sm text-blue-800">
+                    <Calendar className="h-4 w-4" />
+                    <span>
+                      Analysis based on {digitalTwinData.newsMetadata.totalArticles} recent news articles (
+                      {digitalTwinData.newsMetadata.dateRange})
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Reset button for Digital Twin */}
+              <div className="flex justify-end mb-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setDigitalTwinData(null)
+                    setError(null)
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <TrendingUp className="h-3 w-3" />
+                  Generate New Digital Twin Analysis
+                </Button>
+              </div>
+
               {/* AI Alerts */}
               {digitalTwinData.alerts && digitalTwinData.alerts.length > 0 && (
                 <div className="space-y-2">
@@ -393,9 +750,41 @@ export default function SupplyChainLogistics() {
                         <Badge variant="outline">{alert.timeframe}</Badge>
                       </AlertTitle>
                       <AlertDescription>
-                        <div>{alert.message}</div>
-                        <div className="text-sm mt-1">
-                          <strong>Impact:</strong> {alert.impact}
+                        <div className="space-y-3">
+                          <div>{alert.message}</div>
+                          <div className="text-sm">
+                            <strong>Impact:</strong> {alert.impact}
+                          </div>
+
+                          {/* News Sources Tags */}
+                          {alert.newsSources && alert.newsSources.length > 0 && (
+                            <div className="space-y-2">
+                              <div className="text-xs font-medium text-gray-600">Sources:</div>
+                              <div className="flex flex-wrap gap-2">
+                                {alert.newsSources.map((newsSource: any, sourceIndex: number) => {
+                                  // Create a targeted search query for the specific article
+                                  const searchQuery = `"${newsSource.source}" "${alert.message.split(" ").slice(0, 5).join(" ")}" ${newsSource.date}`
+                                  const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(searchQuery)}&tbm=nws`
+
+                                  return (
+                                    <a
+                                      key={sourceIndex}
+                                      href={searchUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 hover:bg-blue-100 rounded-md text-xs transition-colors cursor-pointer group"
+                                      title={`Search for: ${alert.message} from ${newsSource.source}`}
+                                    >
+                                      <ExternalLink className="h-3 w-3 group-hover:text-blue-600" />
+                                      <span className="font-medium group-hover:text-blue-600">{newsSource.source}</span>
+                                      <span className="text-gray-500">•</span>
+                                      <span className="text-gray-600 group-hover:text-blue-600">{newsSource.date}</span>
+                                    </a>
+                                  )
+                                })}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </AlertDescription>
                     </Alert>
@@ -404,76 +793,124 @@ export default function SupplyChainLogistics() {
               )}
 
               {/* Digital Twin Projections */}
-              {digitalTwinData.projections && (
+              {digitalTwinData.projections && digitalTwinData.projections.length > 0 && (
                 <div>
                   <h4 className="font-semibold mb-4">6-Month Risk Projection Model</h4>
                   <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={digitalTwinData.projections}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="month" />
-                        <YAxis domain={[80, 120]} />
-                        <Tooltip />
-                        <Line type="monotone" dataKey="baseline" stroke="#8884d8" name="Baseline" strokeWidth={2} />
-                        <Line
-                          type="monotone"
-                          dataKey="tariffImpact"
-                          stroke="#ff7300"
-                          name="Tariff Impact"
-                          strokeWidth={2}
-                        />
-                        <Line
-                          type="monotone"
-                          dataKey="logisticsCost"
-                          stroke="#00ff00"
-                          name="Logistics Cost"
-                          strokeWidth={2}
-                        />
-                        <Line
-                          type="monotone"
-                          dataKey="materialPrice"
-                          stroke="#ff00ff"
-                          name="Material Prices"
-                          strokeWidth={2}
-                        />
-                        <Line
-                          type="monotone"
-                          dataKey="geopolitical"
-                          stroke="#ff0000"
-                          name="Geopolitical Risk"
-                          strokeWidth={2}
-                        />
-                        <Line
-                          type="monotone"
-                          dataKey="combinedRisk"
-                          stroke="#000000"
-                          name="Combined Risk"
-                          strokeWidth={3}
-                          strokeDasharray="5 5"
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
+                    {isClient ? (
+                      <ChartJsLine options={dynamicLineChartOptions} data={lineChartData} />
+                    ) : (
+                      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mx-auto mt-10" />
+                    )}
                   </div>
                 </div>
               )}
 
               {/* AI Insights */}
-              {digitalTwinData.insights && (
+              {digitalTwinData.insights && digitalTwinData.insights.length > 0 && (
                 <div className="space-y-3">
-                  <h4 className="font-semibold">AI-Generated Insights</h4>
-                  {digitalTwinData.insights.map((insight: any, index: number) => (
-                    <Alert key={index}>
-                      <Brain className="h-4 w-4" />
-                      <AlertTitle className="flex items-center justify-between">
-                        {insight.title}
-                        <div className="flex gap-2">
-                          <Badge variant="secondary">{insight.category}</Badge>
-                          <Badge variant="outline">{insight.confidence}% confidence</Badge>
-                        </div>
-                      </AlertTitle>
-                      <AlertDescription>{insight.insight}</AlertDescription>
-                    </Alert>
-                  ))}
+                  <h4 className="font-semibold">AI-Generated Strategic Insights</h4>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Strategic responses and opportunities based on the early warning alerts above
+                  </p>
+                  {digitalTwinData.insights.map((insight: any, index: number) => {
+                    const isBusinessOpportunity = [
+                      "Business Opportunity",
+                      "Market Expansion",
+                      "Innovation Opportunity",
+                      "Partnership Opportunity",
+                      "Investment Opportunity",
+                    ].includes(insight.category)
+
+                    return (
+                      <Alert key={index} className={isBusinessOpportunity ? "border-green-200 bg-green-50" : ""}>
+                        <Brain className="h-4 w-4" />
+                        <AlertTitle className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            {insight.title}
+                            {isBusinessOpportunity && (
+                              <Badge variant="default" className="bg-green-600 hover:bg-green-700">
+                                💡 Business Opportunity
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="flex gap-2">
+                            <Badge
+                              variant={isBusinessOpportunity ? "default" : "secondary"}
+                              className={isBusinessOpportunity ? "bg-green-100 text-green-800 hover:bg-green-200" : ""}
+                            >
+                              {insight.category}
+                            </Badge>
+                            <Badge variant="outline">{formatConfidence(insight.confidence)}% confidence</Badge>
+                          </div>
+                        </AlertTitle>
+                        <AlertDescription>
+                          <div className="space-y-3">
+                            <p>{insight.insight}</p>
+
+                            {/* Business Opportunity Details */}
+                            {isBusinessOpportunity && (
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 bg-green-100 rounded-lg">
+                                {insight.potentialRevenue && (
+                                  <div className="text-sm">
+                                    <span className="font-medium text-green-800">Potential Revenue:</span>
+                                    <div className="text-green-700">{insight.potentialRevenue}</div>
+                                  </div>
+                                )}
+                                {insight.implementationTimeframe && (
+                                  <div className="text-sm">
+                                    <span className="font-medium text-green-800">Timeline:</span>
+                                    <div className="text-green-700">{insight.implementationTimeframe}</div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* News Context */}
+                            {insight.newsContext && insight.newsContext.length > 0 && (
+                              <div className="space-y-2">
+                                <div className="text-xs font-medium text-gray-600">Supporting News Context:</div>
+                                <div className="space-y-1">
+                                  {insight.newsContext.map((context: string, contextIndex: number) => {
+                                    // Create a more specific search for the news context
+                                    const searchQuery = `"${context}" supply chain logistics`
+                                    const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(searchQuery)}&tbm=nws`
+
+                                    return (
+                                      <a
+                                        key={contextIndex}
+                                        href={searchUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-xs text-blue-600 bg-blue-50 hover:bg-blue-100 p-2 rounded flex items-start gap-2 transition-colors cursor-pointer group"
+                                        title={`Search news for: ${context}`}
+                                      >
+                                        <ExternalLink className="h-3 w-3 mt-0.5 flex-shrink-0 group-hover:text-blue-800" />
+                                        <span className="group-hover:text-blue-800">{context}</span>
+                                      </a>
+                                    )
+                                  })}
+                                </div>
+                              </div>
+                            )}
+
+                            {insight.relatedAlert && (
+                              <div className="text-xs text-blue-600 bg-blue-50 p-2 rounded">
+                                <strong>Related Alert:</strong> {insight.relatedAlert}
+                              </div>
+                            )}
+
+                            {insight.actionable && (
+                              <div className="flex items-center gap-1 text-xs text-green-600">
+                                <CheckCircle className="h-3 w-3" />
+                                Actionable insight - immediate implementation possible
+                              </div>
+                            )}
+                          </div>
+                        </AlertDescription>
+                      </Alert>
+                    )
+                  })}
                 </div>
               )}
             </div>
@@ -481,7 +918,7 @@ export default function SupplyChainLogistics() {
         </CardContent>
       </Card>
 
-      {/* Keep existing charts */}
+      {/* Charts using Chart.js */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <div className="flex flex-col space-y-1.5 p-6">
@@ -490,17 +927,11 @@ export default function SupplyChainLogistics() {
           </div>
           <CardContent>
             <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={logisticsCosts}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="route" angle={-45} textAnchor="end" height={80} />
-                  <YAxis yAxisId="left" />
-                  <YAxis yAxisId="right" orientation="right" />
-                  <Tooltip />
-                  <Bar yAxisId="left" dataKey="heavy" fill="#0088FE" name="Heavy Equipment ($)" />
-                  <Bar yAxisId="right" dataKey="tools" fill="#00C49F" name="Tools ($/kg)" />
-                </BarChart>
-              </ResponsiveContainer>
+              {isClient ? (
+                <Bar options={barChartOptions} data={logisticsCostsData} />
+              ) : (
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mx-auto mt-10" />
+              )}
             </div>
           </CardContent>
         </Card>
@@ -511,26 +942,12 @@ export default function SupplyChainLogistics() {
             <CardDescription>Usage by volume across Sandvik's logistics network</CardDescription>
           </div>
           <CardContent>
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={modeDistribution}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, value }) => `${name}: ${value}%`}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {modeDistribution.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
+            <div className="h-80 w-full flex justify-center items-center">
+              {isClient ? (
+                <Doughnut data={modeDistributionData} options={doughnutChartOptions} />
+              ) : (
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mx-auto mt-10" />
+              )}
             </div>
           </CardContent>
         </Card>

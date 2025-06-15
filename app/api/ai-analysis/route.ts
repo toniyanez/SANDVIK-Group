@@ -9,10 +9,12 @@ const TariffAnalysisSchema = z.object({
       usEuTariff: z.number(),
       chinaUsTariff: z.number(),
       euChinaTariff: z.number(),
-      impact: z.enum(["Low Risk", "Medium Risk", "High Risk", "Critical Risk"]),
+      // Changed from "Risk" levels to "Impact" levels
+      impact: z.enum(["Low", "Medium", "High", "Critical"]),
       revenue: z.number(),
       margin: z.number(),
-      probability: z.number(),
+      // Changed from number to qualitative probability
+      probability: z.enum(["Low", "Medium", "High"]),
       reasoning: z.string(),
     }),
   ),
@@ -65,18 +67,29 @@ export async function POST(request: Request) {
         Sandvik is implementing SMMS regionalization to reduce cross-border complexities and tariff exposure.
         
         Analyze the current global trade environment and provide:
-        1. 3-4 realistic tariff scenarios with specific impacts on Sandvik's revenue and margins
-        2. AI-generated strategic responses with investment requirements and ROI projections
-        3. Overall risk assessment with actionable recommendations
+        1. 3-4 realistic tariff scenarios. For each scenario, include:
+           - A descriptive name for the scenario.
+           - Specific tariff percentages for US-EU, China-US, and EU-China trade.
+           - The **impact level** on Sandvik (choose from: "Low", "Medium", "High", "Critical").
+           - The estimated impact on Sandvik's total revenue (in SEK Millions).
+           - The estimated impact on Sandvik's overall margin (as a percentage).
+           - The **probability** of this scenario occurring (choose from: "Low", "Medium", "High").
+           - A brief reasoning for the scenario and its impacts.
+        2. AI-generated strategic responses with investment requirements and ROI projections.
+        3. Overall risk assessment with actionable recommendations.
         
         Base your analysis on current geopolitical trends, trade policy patterns, and Sandvik's specific business model.
-        Be specific with numbers and realistic about timelines and investments.
+        Be specific with numbers and realistic about timelines and investments. Ensure all requested fields are populated.
       `,
     })
 
     return Response.json(result.object)
   } catch (error) {
     console.error("AI Analysis Error:", error)
+    // Ensure a Zod-compliant error response or a generic one if Zod isn't the issue
+    if (error instanceof z.ZodError) {
+      return Response.json({ error: "AI response validation error", details: error.issues }, { status: 500 })
+    }
     return Response.json({ error: "Failed to generate AI analysis" }, { status: 500 })
   }
 }

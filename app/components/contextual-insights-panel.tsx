@@ -1,391 +1,394 @@
 "use client"
 
-import type React from "react"
-import { useState, useEffect, useMemo } from "react"
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
-import { Button } from "@/components/ui/button" // Import Button
+import { useState, useEffect } from "react"
+import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Button } from "@/components/ui/button"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
-  Lightbulb,
-  CheckCircle2,
-  Info,
-  ExternalLink,
-  BookOpen,
-  Clock,
-  ShieldCheck,
-  ListChecks,
-  FileText,
-  Loader2,
-  ServerCrash,
-  Bot,
-  Newspaper,
-  type LucideIcon,
   AlertTriangle,
-  DollarSign,
-  Settings,
-  Truck,
-  Rocket,
-  Factory,
-  ShieldQuestion,
-  Sparkles,
+  TrendingUp,
+  Clock,
+  ExternalLink,
+  Lightbulb,
+  Brain,
+  BookOpen,
+  Newspaper,
+  Calendar,
+  Loader2,
+  Target,
 } from "lucide-react"
-import Link from "next/link"
-import { formatDistanceToNow } from "date-fns"
-import { cn } from "@/lib/utils"
 
-interface DetailedSource {
-  name: string
-  contribution: string
-}
-
-interface ApiInsight {
-  id?: string
-  iconName: string
+interface Insight {
+  id: string
   title: string
   description: string
-  badgeText: string
-  badgeVariant?: "default" | "secondary" | "destructive" | "outline" | "success" | "warning" | "info"
-  badgeClassName?: string
+  type: string
+  priority: "Low" | "Medium" | "High" | "Critical"
+  confidence: number
   source: string
-  confidence: number | string
-  isAI?: boolean
-  actionLink?: {
-    href: string
-    text: string
-    iconName: string
+  timestamp: string
+}
+
+interface NewsArticle {
+  title: string
+  description: string
+  source: string
+  publishedAt: string
+  url: string
+  relevanceScore: number
+}
+
+interface ContextualInsightsData {
+  insights: Insight[]
+  aiInsights: Insight[]
+  curatedInsights: Insight[]
+  newsArticles: NewsArticle[]
+  metadata: {
+    activeTab: string
+    scenarioName?: string
+    totalInsights: number
+    totalNews: number
+    lastUpdated: string
   }
-  timestamp?: string
-  detailedSources?: DetailedSource[]
-  sourcesCheckedCount?: number
-  category?: string
-  type?: "ai" | "manual" | "news"
-  sentiment?: "positive" | "negative" | "neutral"
-  verification?: string
-  fullReportUrl?: string
+}
+
+interface SimulationContext {
+  scenarioName?: string
+  scenarioDescription?: string
+  impactSummary?: {
+    revenueChangePercent?: number
+    marginChangePercentPoints?: number
+    costChangePercent?: number
+  }
+  businessAreaImpacts?: Array<{
+    area: string
+    revenueImpactPercent: number
+    riskLevel: string
+    description: string
+  }>
+  materialImpacts?: Array<{
+    material: string
+    costImpactPercent: number
+    availabilityRisk: string
+  }>
+  recommendations?: Array<{
+    action: string
+    priority: string
+  }>
 }
 
 interface ContextualInsightsPanelProps {
   activeTab: string
-  panelTitle: string
-  className?: string
+  panelTitle?: string
+  simulationContext?: SimulationContext
 }
 
-const iconMap: { [key: string]: LucideIcon } = {
-  Lightbulb,
-  TrendingUp: Lightbulb,
-  AlertTriangle,
-  DollarSign,
-  Settings,
-  Truck,
-  BarChart3: ListChecks,
-  Brain: Bot,
-  FileText,
-  ArrowRight: ExternalLink,
-  ListChecks,
-  Zap: Lightbulb,
-  Factory,
-  Info,
-  Clock,
-  ShieldCheck,
-  BookOpen,
-  ExternalLink,
-  MessageSquareWarning: AlertTriangle,
-  CheckCircle2,
-  XCircle: ServerCrash,
-  Bot,
-  Newspaper,
-  Rocket,
-  ShieldQuestion,
-  Sparkles,
-}
-const DefaultIcon = Info
+const priorityColors = {
+  Critical: "destructive",
+  High: "destructive",
+  Medium: "default",
+  Low: "secondary",
+} as const
 
-const InsightTypeIcon = ({ type, iconName }: { type?: ApiInsight["type"]; iconName?: string }) => {
-  const ResolvedIcon = iconName ? iconMap[iconName] : DefaultIcon
-
-  if (type === "ai") return <Bot className="w-5 h-5 text-purple-500" />
-  if (type === "manual") return <CheckCircle2 className="w-5 h-5 text-blue-500" />
-  if (type === "news") return <Newspaper className="w-5 h-5 text-orange-500" />
-
-  return ResolvedIcon ? (
-    <ResolvedIcon className="w-5 h-5 text-slate-500" />
-  ) : (
-    <DefaultIcon className="w-5 h-5 text-slate-500" />
-  )
+const typeIcons = {
+  "Risk Mitigation": AlertTriangle,
+  "Cost Management": TrendingUp,
+  Operational: Clock,
+  "Operational Resilience": AlertTriangle,
+  "Route Optimization": TrendingUp,
+  "AI Recommendation": Brain,
+  "Best Practice": BookOpen,
+  Strategic: Lightbulb,
+  "Supply Risk": AlertTriangle,
+  "Cost Optimization": TrendingUp,
+  "Production Risk": AlertTriangle,
 }
 
-const ContextualInsightsPanel: React.FC<ContextualInsightsPanelProps> = ({ activeTab, panelTitle, className }) => {
-  const [insights, setInsights] = useState<ApiInsight[]>([])
-  const [isLoading, setIsLoading] = useState(false) // Start as false
-  const [error, setError] = useState<string | null>(null)
-  const [activeInsightType, setActiveInsightType] = useState<"all" | "ai" | "manual" | "news">("all")
-  const [insightsRequested, setInsightsRequested] = useState(false) // New state
+export default function ContextualInsightsPanel({
+  activeTab,
+  panelTitle,
+  simulationContext,
+}: ContextualInsightsPanelProps) {
+  const [data, setData] = useState<ContextualInsightsData | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
-    // Only fetch if insights have been requested and activeTab is valid
-    if (!insightsRequested || !activeTab) {
-      // If not requested, or tab changes and becomes invalid, reset insights
-      setInsights([])
-      setIsLoading(false)
-      setError(null)
-      return
-    }
-
-    const fetchInsightsForTab = async () => {
+    const fetchInsights = async () => {
       setIsLoading(true)
-      setError(null)
-      setInsights([]) // Clear previous insights before new fetch
-
       try {
-        const response = await fetch(`/api/contextual-insights?tab=${activeTab}`)
-        if (!response.ok) {
-          let errorMsg = `Failed to fetch insights (Status: ${response.status})`
-          let responseBodyForLogging: any = {}
-          try {
-            const errorBody = await response.json()
-            responseBodyForLogging = errorBody // Store for logging
-            // Use a more specific error message if provided by the API
-            if (errorBody.error) {
-              errorMsg = errorBody.error
-            } else if (errorBody.message) {
-              // Some APIs might use 'message'
-              errorMsg = errorBody.message
-            }
-            // Log the full error body received from the API
-            console.error("Contextual Insights API Error Response:", errorBody)
-          } catch (parseError) {
-            // If parsing JSON fails, log the raw text response if possible
-            try {
-              const textResponse = await response.text()
-              console.error("Failed to parse error response JSON. Raw text response:", textResponse)
-              responseBodyForLogging = { rawResponse: textResponse }
-            } catch (textError) {
-              console.error("Failed to parse error response JSON and failed to get raw text response:", textError)
-            }
-          }
-          // Include more details in the error thrown to the UI
-          const detailedError = new Error(errorMsg)
-          ;(detailedError as any).details = responseBodyForLogging // Attach details if needed later
-          throw detailedError
+        let url = `/api/contextual-insights?activeTab=${activeTab}`
+
+        // Add simulation context if available
+        if (simulationContext) {
+          url += `&simulationContext=${encodeURIComponent(JSON.stringify(simulationContext))}`
         }
-        const data = await response.json()
-        const fetchedInsights: ApiInsight[] = (data.insights || []).map((insight: any, index: number) => ({
-          ...insight,
-          id: insight.id || `${activeTab}-insight-${index}-${Date.now()}`,
-          type:
-            insight.type || (insight.isAI ? (insight.source.toLowerCase().includes("news") ? "news" : "ai") : "manual"),
-          category: insight.badgeText,
-          verification: insight.sourcesCheckedCount ? `${insight.sourcesCheckedCount} sources checked` : undefined,
-          fullReportUrl: insight.actionLink?.href,
-          sentiment:
-            insight.badgeVariant === "destructive"
-              ? "negative"
-              : insight.badgeVariant === "success"
-                ? "positive"
-                : "neutral",
-        }))
-        setInsights(fetchedInsights)
-      } catch (err: any) {
-        console.error("Error fetching insights:", err)
-        setError(err.message || "An unknown error occurred.")
+
+        const response = await fetch(url)
+        if (response.ok) {
+          const insightsData = await response.json()
+          setData(insightsData)
+        } else {
+          console.error("Failed to fetch insights:", response.status, response.statusText)
+        }
+      } catch (error) {
+        console.error("Failed to fetch contextual insights:", error)
       } finally {
         setIsLoading(false)
       }
     }
-    fetchInsightsForTab()
-  }, [activeTab, insightsRequested]) // Add insightsRequested to dependency array
 
-  // Reset insightsRequested when activeTab changes, so user has to click again for new tab
-  useEffect(() => {
-    setInsightsRequested(false)
-  }, [activeTab])
+    fetchInsights()
+  }, [activeTab, simulationContext])
 
-  const handleLoadInsights = () => {
-    setInsightsRequested(true)
+  const formatTimeAgo = (dateString: string) => {
+    const date = new Date(dateString)
+    const now = new Date()
+    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60))
+
+    if (diffInHours < 1) return "Just now"
+    if (diffInHours < 24) return `${diffInHours}h ago`
+
+    const diffInDays = Math.floor(diffInHours / 24)
+    if (diffInDays < 7) return `${diffInDays}d ago`
+
+    return date.toLocaleDateString()
   }
 
-  const filteredInsights = useMemo(() => {
-    if (activeInsightType === "all") return insights
-    return insights.filter((insight) => insight.type === activeInsightType)
-  }, [insights, activeInsightType])
+  const renderInsight = (insight: Insight) => {
+    const IconComponent = typeIcons[insight.type as keyof typeof typeIcons] || Lightbulb
 
-  const getSentimentClasses = (sentiment?: ApiInsight["sentiment"]) => {
-    switch (sentiment) {
-      case "positive":
-        return "border-l-4 border-green-500"
-      case "negative":
-        return "border-l-4 border-red-500"
-      default:
-        return "border-l-4 border-slate-300 dark:border-slate-600"
-    }
+    return (
+      <Card key={insight.id} className="mb-4">
+        <CardContent className="p-4">
+          <div className="space-y-3">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-2">
+                <IconComponent className="h-4 w-4 text-gray-500" />
+                <Badge variant={priorityColors[insight.priority]} className="text-xs">
+                  {insight.priority}
+                </Badge>
+                <Badge variant="outline" className="text-xs">
+                  {insight.type}
+                </Badge>
+                {data?.metadata.scenarioName && (
+                  <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                    <Target className="h-3 w-3 mr-1" />
+                    Scenario-Specific
+                  </Badge>
+                )}
+              </div>
+              <div className="text-xs text-gray-500">{insight.confidence}% confidence</div>
+            </div>
+
+            <div>
+              <h4 className="font-semibold text-sm text-gray-900 mb-1">{insight.title}</h4>
+              <p className="text-xs text-gray-600 leading-relaxed">{insight.description}</p>
+            </div>
+
+            <div className="flex items-center justify-between text-xs text-gray-500">
+              <div className="flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                <span>Source: {insight.source}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Calendar className="h-3 w-3" />
+                <span>{formatTimeAgo(insight.timestamp)}</span>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    )
   }
 
-  const getBadgeStyling = (
-    insight: ApiInsight,
-  ): { variant: "default" | "secondary" | "destructive" | "outline"; className: string } => {
-    if (insight.type === "news") return { variant: "outline", className: "border-orange-500 text-orange-600" }
-    if (insight.isAI) return { variant: "default", className: "bg-sky-500 hover:bg-sky-600 text-white border-sky-600" }
-    switch (insight.badgeVariant) {
-      case "success":
-        return { variant: "default", className: "bg-green-500 hover:bg-green-600 text-white border-green-600" }
-      case "warning":
-        return { variant: "default", className: "bg-amber-500 hover:bg-amber-600 text-white border-amber-600" }
-      case "info":
-        return { variant: "default", className: "bg-blue-500 hover:bg-blue-600 text-white border-blue-600" }
-      case "destructive":
-        return { variant: "destructive", className: "" }
-      default:
-        return { variant: "secondary", className: "" }
-    }
+  const renderNewsArticle = (article: NewsArticle, index: number) => {
+    return (
+      <Card key={index} className="mb-4">
+        <CardContent className="p-4">
+          <div className="space-y-3">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="text-xs bg-orange-50 text-orange-700 border-orange-200">
+                  Recent News
+                </Badge>
+                {data?.metadata.scenarioName && (
+                  <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                    <Target className="h-3 w-3 mr-1" />
+                    Scenario-Related
+                  </Badge>
+                )}
+              </div>
+              <div className="text-xs text-gray-500">{Math.round(article.relevanceScore * 100)}% relevance</div>
+            </div>
+
+            <div>
+              <h4 className="font-semibold text-sm text-gray-900 mb-2 leading-tight">{article.title}</h4>
+              <p className="text-xs text-gray-600 leading-relaxed mb-3">{article.description}</p>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs text-gray-500">
+                <div className="flex items-center gap-1">
+                  <Newspaper className="h-3 w-3" />
+                  <span>Source: {article.source}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Calendar className="h-3 w-3" />
+                  <span>{formatTimeAgo(article.publishedAt)}</span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="text-xs text-gray-500">From {article.source}</div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-blue-600 hover:text-blue-800 h-6 px-2 text-xs"
+                  onClick={() => window.open(article.url, "_blank")}
+                >
+                  <ExternalLink className="h-3 w-3 mr-1" />
+                  Read Full Article
+                </Button>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    )
   }
+
+  if (isLoading) {
+    return (
+      <div className="p-6">
+        <div className="flex items-center justify-center min-h-[200px]">
+          <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
+          <p className="ml-2 text-sm text-gray-600">Loading scenario-specific insights...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!data) {
+    return (
+      <div className="p-6">
+        <div className="text-center text-gray-500">
+          <p className="text-sm">Failed to load insights</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Calculate correct totals
+  const totalInsights = data.insights.length
+  const totalAiInsights = data.aiInsights.length
+  const totalCuratedInsights = data.curatedInsights.length
+  const totalNews = data.newsArticles.length
+  const totalAll = totalInsights + totalAiInsights + totalCuratedInsights + totalNews
 
   return (
-    <Card className={cn("shadow-lg h-full flex flex-col", className)}>
-      <CardHeader className="pb-3 pt-4 px-4 border-b dark:border-slate-700">
-        <div className="flex justify-between items-center">
-          <CardTitle className="text-lg font-semibold text-brand-dark dark:text-slate-100 flex items-center">
-            <Lightbulb className="w-5 h-5 mr-2 text-brand-accent" />
-            {panelTitle}
-          </CardTitle>
+    <div className="h-full flex flex-col">
+      <div className="p-6 border-b border-gray-200">
+        <div className="flex items-center gap-2 mb-2">
+          <Lightbulb className="h-5 w-5 text-blue-600" />
+          <h2 className="text-lg font-semibold text-gray-900">{panelTitle || `Insights for ${activeTab}`}</h2>
+          {data.metadata.scenarioName && (
+            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+              <Target className="h-3 w-3 mr-1" />
+              {data.metadata.scenarioName}
+            </Badge>
+          )}
         </div>
-      </CardHeader>
-      <CardContent className="p-0 flex-grow overflow-y-auto flex flex-col">
-        {!insightsRequested ? (
-          <div className="flex-grow flex flex-col items-center justify-center p-6 text-center">
-            <Info className="w-12 h-12 text-brand-accent mb-4" />
-            <p className="text-md font-semibold text-slate-700 dark:text-slate-300 mb-2">Contextual Insights Ready</p>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
-              Click the button below to load insights relevant to the current view.
-            </p>
-            <Button onClick={handleLoadInsights} className="bg-brand-accent hover:bg-brand-accent/90">
-              <Sparkles className="w-4 h-4 mr-2" />
-              Load Insights for {activeTab}
-            </Button>
-          </div>
-        ) : isLoading ? (
-          <div className="flex-grow flex flex-col items-center justify-center text-slate-500 dark:text-slate-400">
-            <Loader2 className="w-12 h-12 animate-spin text-brand-accent mb-4" />
-            <p className="text-lg font-semibold">Loading Insights...</p>
-            <p className="text-sm">Please wait while we fetch the latest data.</p>
-          </div>
-        ) : error ? (
-          <div className="flex-grow flex flex-col items-center justify-center p-6 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 text-center">
-            <ServerCrash className="w-12 h-12 mb-4" />
-            <p className="text-lg font-semibold mb-1">Error Loading Insights</p>
-            <p className="text-sm mb-3">We couldn't fetch the contextual insights.</p>
-            <p className="text-xs text-red-500 dark:text-red-400 bg-red-100 dark:bg-red-800/50 p-2 rounded-md mb-4 break-all">
-              Error: {error}
-            </p>
-            <Button onClick={handleLoadInsights} variant="outline">
-              <Sparkles className="w-4 h-4 mr-2" />
-              Retry Loading Insights
-            </Button>
-          </div>
-        ) : (
-          // Insights loaded (or no insights found after loading)
-          <Tabs
-            defaultValue="all"
-            onValueChange={(value) => setActiveInsightType(value as any)}
-            className="h-full flex flex-col"
-          >
-            <TabsList className="mx-3 mt-3 mb-1 sticky top-0 bg-slate-100 dark:bg-slate-800 z-10">
-              <TabsTrigger value="all">All ({insights.length})</TabsTrigger>
-              <TabsTrigger value="ai">AI ({insights.filter((i) => i.type === "ai").length})</TabsTrigger>
-              <TabsTrigger value="manual">Curated ({insights.filter((i) => i.type === "manual").length})</TabsTrigger>
-              <TabsTrigger value="news">News ({insights.filter((i) => i.type === "news").length})</TabsTrigger>
+        <p className="text-xs text-gray-600">
+          {data.metadata.scenarioName
+            ? `Contextual analysis for your simulation scenario`
+            : `Real-time analysis and recommendations based on current market conditions`}
+        </p>
+      </div>
+
+      <div className="flex-1 overflow-y-auto">
+        <div className="p-6">
+          <Tabs defaultValue="all" className="space-y-4">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="all" className="text-xs">
+                All ({totalAll})
+              </TabsTrigger>
+              <TabsTrigger value="ai" className="text-xs">
+                AI ({totalAiInsights})
+              </TabsTrigger>
+              <TabsTrigger value="curated" className="text-xs">
+                Curated ({totalCuratedInsights})
+              </TabsTrigger>
+              <TabsTrigger value="news" className="text-xs">
+                News ({totalNews})
+              </TabsTrigger>
             </TabsList>
-            <div className="p-3 space-y-3 flex-grow overflow-y-auto">
-              {filteredInsights.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full text-slate-500 dark:text-slate-400 p-6 text-center">
-                  <Info className="w-10 h-10 text-brand-accent mb-3" />
-                  <p className="text-md font-semibold">No {activeInsightType} insights</p>
-                  <p className="text-sm">There are no insights of this type for "{activeTab}".</p>
+
+            <TabsContent value="all" className="space-y-4">
+              {/* Regular insights */}
+              {data.insights.map(renderInsight)}
+              {/* AI insights */}
+              {data.aiInsights.map(renderInsight)}
+              {/* Curated insights */}
+              {data.curatedInsights.map(renderInsight)}
+              {/* News articles */}
+              {data.newsArticles.map(renderNewsArticle)}
+
+              {totalAll === 0 && (
+                <div className="text-center text-gray-500 py-8">
+                  <Lightbulb className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                  <p className="text-sm">No insights available for this section</p>
                 </div>
-              ) : (
-                filteredInsights.map((insight) => {
-                  const badgeStyle = getBadgeStyling(insight)
-                  return (
-                    <Card
-                      key={insight.id}
-                      className={cn(
-                        "bg-white dark:bg-slate-800/70 shadow-sm hover:shadow-md transition-shadow",
-                        getSentimentClasses(insight.sentiment),
-                      )}
-                    >
-                      <CardHeader className="py-3 px-4">
-                        <div className="flex justify-between items-start">
-                          <div className="flex items-center space-x-2">
-                            <InsightTypeIcon type={insight.type} iconName={insight.iconName} />
-                            <h3 className="text-md font-semibold text-slate-800 dark:text-slate-100">
-                              {insight.title}
-                            </h3>
-                          </div>
-                          <Badge
-                            variant={badgeStyle.variant}
-                            className={cn("text-xs px-2 py-0.5", badgeStyle.className)}
-                          >
-                            {insight.badgeText}
-                          </Badge>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="py-2 px-4 text-sm text-slate-600 dark:text-slate-300">
-                        <p className="leading-relaxed">{insight.description}</p>
-                        <div className="mt-3 space-y-1.5 text-xs text-slate-500 dark:text-slate-400">
-                          <div className="flex items-center">
-                            <BookOpen className="w-3.5 h-3.5 mr-1.5 text-slate-400 dark:text-slate-500 shrink-0" />
-                            <span className="font-medium mr-1">Source:</span>
-                            <span className="truncate" title={insight.source}>
-                              {insight.source}
-                            </span>
-                            {insight.timestamp && (
-                              <>
-                                <span className="mx-1.5">·</span>
-                                <Clock className="w-3.5 h-3.5 mr-1 text-slate-400 dark:text-slate-500 shrink-0" />
-                                <span>{formatDistanceToNow(new Date(insight.timestamp), { addSuffix: true })}</span>
-                              </>
-                            )}
-                          </div>
-                          <div className="flex items-center">
-                            <ShieldCheck className="w-3.5 h-3.5 mr-1.5 text-slate-400 dark:text-slate-500 shrink-0" />
-                            <span className="font-medium mr-1">Confidence:</span>
-                            <span>
-                              {typeof insight.confidence === "number" ? `${insight.confidence}%` : insight.confidence}
-                            </span>
-                            {insight.verification && (
-                              <>
-                                <span className="mx-1.5">·</span>
-                                <ListChecks className="w-3.5 h-3.5 mr-1 text-slate-400 dark:text-slate-500 shrink-0" />
-                                <span>{insight.verification}</span>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      </CardContent>
-                      {insight.fullReportUrl && (
-                        <CardFooter className="py-2 px-4 border-t dark:border-slate-700/50">
-                          <Link
-                            href={insight.fullReportUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center text-xs text-brand-accent hover:underline font-medium"
-                          >
-                            <FileText className="w-3.5 h-3.5 mr-1.5" />
-                            {insight.actionLink?.text || "View Full Report"}
-                            <ExternalLink className="w-3 h-3 ml-1" />
-                          </Link>
-                        </CardFooter>
-                      )}
-                    </Card>
-                  )
-                })
               )}
-            </div>
+            </TabsContent>
+
+            <TabsContent value="ai" className="space-y-4">
+              {data.aiInsights.length > 0 ? (
+                data.aiInsights.map(renderInsight)
+              ) : (
+                <div className="text-center text-gray-500 py-8">
+                  <Brain className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                  <p className="text-sm">No AI insights available</p>
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="curated" className="space-y-4">
+              {data.curatedInsights.length > 0 ? (
+                data.curatedInsights.map(renderInsight)
+              ) : (
+                <div className="text-center text-gray-500 py-8">
+                  <BookOpen className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                  <p className="text-sm">No curated insights available</p>
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="news" className="space-y-4">
+              {data.newsArticles.length > 0 ? (
+                data.newsArticles.map(renderNewsArticle)
+              ) : (
+                <div className="text-center text-gray-500 py-8">
+                  <Newspaper className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                  <p className="text-sm">No recent supply chain news available</p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    News API may be unavailable or no relevant articles found
+                  </p>
+                </div>
+              )}
+            </TabsContent>
           </Tabs>
-        )}
-      </CardContent>
-    </Card>
+        </div>
+      </div>
+
+      <div className="p-4 border-t border-gray-200 bg-gray-50">
+        <div className="text-xs text-gray-500 text-center">
+          Last updated: {new Date(data.metadata.lastUpdated).toLocaleTimeString()}
+          {data.metadata.scenarioName && (
+            <span className="block mt-1">Contextual to: {data.metadata.scenarioName}</span>
+          )}
+        </div>
+      </div>
+    </div>
   )
 }
-
-export default ContextualInsightsPanel

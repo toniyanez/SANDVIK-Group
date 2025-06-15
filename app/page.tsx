@@ -1,7 +1,5 @@
 "use client"
 
-import { cn } from "@/lib/utils"
-
 import type React from "react"
 import { useState, useEffect, Suspense } from "react"
 import Image from "next/image"
@@ -17,13 +15,14 @@ import {
   HelpCircle,
   Settings,
   DollarSign,
-  ChevronDown,
-  ChevronRight,
   Loader2,
   Rocket,
   ShieldAlert,
   Swords,
   KeyIcon as CriticalMaterialsIcon,
+  Newspaper,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import {
@@ -42,7 +41,9 @@ import CriticalMaterials from "@/app/components/critical-materials"
 import SupplyChainLogistics from "@/app/components/supply-chain-logistics"
 import SupplyChainSimulations from "@/app/components/supply-chain-simulations"
 import ContextualInsightsPanel from "@/app/components/contextual-insights-panel"
+import SupplyChainNewsFeed from "@/app/components/supply-chain-news-feed"
 import dynamic from "next/dynamic"
+import { cn } from "@/lib/utils"
 
 const FinancialsSection = dynamic(() => import("@/app/components/financials-section"), {
   ssr: false,
@@ -84,6 +85,17 @@ const CompetitiveLandscapeSection = dynamic(() => import("@/app/components/compe
   ),
 })
 
+// Dynamically import BusinessAnalystNews if it exists
+const BusinessAnalystNews = dynamic(() => import("@/app/components/business-analyst-news").catch(() => () => null), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center min-h-[400px]">
+      <Loader2 className="h-8 w-8 animate-spin text-brand-accent" />
+      <p className="ml-2 text-lg text-slate-500">Loading Business Analyst News...</p>
+    </div>
+  ),
+})
+
 interface NavSubItem {
   id: string
   label: string
@@ -108,6 +120,7 @@ const navItems: NavItem[] = [
       { id: "strategic-direction", label: "Strategic Direction", icon: Rocket, parentId: "overview" },
       { id: "challenges-risks", label: "Challenges & Risks", icon: ShieldAlert, parentId: "overview" },
       { id: "competitive-landscape", label: "Competitive Landscape", icon: Swords, parentId: "overview" },
+      { id: "business-analyst-news", label: "Business Analyst News", icon: Newspaper, parentId: "overview" },
     ],
   },
   {
@@ -120,6 +133,7 @@ const navItems: NavItem[] = [
   },
   { id: "logistics", label: "Logistics", icon: Truck },
   { id: "simulations", label: "Simulations", icon: Play },
+  { id: "news", label: "News", icon: Newspaper },
 ]
 
 const VALID_API_INSIGHT_TABS = [
@@ -131,7 +145,7 @@ const VALID_API_INSIGHT_TABS = [
   "manufacturing",
   "materials",
   "logistics",
-  "simulations",
+  // "simulations", // Removed simulations from insights tabs
 ]
 
 export default function StrategicCockpitPage() {
@@ -221,14 +235,31 @@ export default function StrategicCockpitPage() {
             <CompetitiveLandscapeSection />
           </Suspense>
         )
-      case "manufacturing": // This case handles the "Manufacturing" main view
+      case "business-analyst-news":
+        return BusinessAnalystNews ? ( // Check if component exists
+          <Suspense
+            fallback={
+              <div className="flex items-center justify-center min-h-[400px]">
+                <Loader2 className="h-8 w-8 animate-spin text-brand-accent" />
+                <p className="ml-2 text-lg text-slate-500">Loading Business Analyst News...</p>
+              </div>
+            }
+          >
+            <BusinessAnalystNews />
+          </Suspense>
+        ) : (
+          <div className="p-4 text-center text-slate-500">Business Analyst News component not available.</div>
+        )
+      case "manufacturing":
         return <ManufacturingFootprint />
-      case "materials": // This case handles the "Critical Materials" sub-view
+      case "materials":
         return <CriticalMaterials />
       case "logistics":
         return <SupplyChainLogistics />
       case "simulations":
         return <SupplyChainSimulations />
+      case "news":
+        return <SupplyChainNewsFeed />
       default:
         return <SandvikOverview />
     }
@@ -243,6 +274,9 @@ export default function StrategicCockpitPage() {
       parentItem && VALID_API_INSIGHT_TABS.includes(parentItem.id) ? parentItem.id : "overview"
   }
   const insightsTabKey = determinedInsightsTabForPanel
+
+  const showContextualInsightsPanel =
+    activeView !== "business-analyst-news" && activeView !== "simulations" && activeView !== "news"
 
   return (
     <AuthGuard>
@@ -377,19 +411,14 @@ export default function StrategicCockpitPage() {
                               <Button
                                 variant="ghost"
                                 onClick={() => {
-                                  // --- REVISED onClick LOGIC FOR MAIN ITEMS ---
-                                  setActiveView(item.id) // Always set active view to the item itself
+                                  setActiveView(item.id)
                                   if (item.subItems && item.subItems.length > 0) {
-                                    // If it has subitems, toggle its expansion state
                                     setExpandedMainTab(isExpanded ? null : item.id)
                                   } else {
-                                    // If no subitems, ensure other expanded items are collapsed
                                     setExpandedMainTab(null)
                                   }
-                                  // --- END OF REVISED onClick LOGIC ---
                                 }}
                                 className={`w-full justify-start items-center space-x-3 py-2.5 rounded-lg transition-all duration-200 ease-in-out ${
-                                  // Style as active if item.id is activeView OR if a subItem is activeView and this is its parent
                                   (
                                     item.id === activeView &&
                                       (!item.subItems ||
@@ -426,7 +455,6 @@ export default function StrategicCockpitPage() {
                                         variant="ghost"
                                         onClick={() => {
                                           setActiveView(subItem.id)
-                                          // Ensure parent remains expanded when subitem is clicked
                                           if (subItem.parentId) {
                                             setExpandedMainTab(subItem.parentId)
                                           }
@@ -457,19 +485,21 @@ export default function StrategicCockpitPage() {
               </div>
             </aside>
             <main className="flex-1 p-6 bg-brand-background overflow-y-auto">{renderContent()}</main>
-            <aside
-              className={cn(
-                "bg-white border-l border-slate-200 flex-shrink-0 sticky z-20 overflow-y-auto",
-                RIGHT_PANEL_WIDTH_CLASS,
-              )}
-              style={{ top: `${TOTAL_HEADER_HEIGHT_PX}px`, height: `calc(100vh - ${TOTAL_HEADER_HEIGHT_PX}px)` }}
-            >
-              <ContextualInsightsPanel
-                key={insightsTabKey}
-                activeTab={insightsTabKey}
-                panelTitle={contextualInsightsPanelTitle}
-              />
-            </aside>
+            {showContextualInsightsPanel && (
+              <aside
+                className={cn(
+                  "bg-white border-l border-slate-200 flex-shrink-0 sticky z-20 overflow-y-auto",
+                  RIGHT_PANEL_WIDTH_CLASS,
+                )}
+                style={{ top: `${TOTAL_HEADER_HEIGHT_PX}px`, height: `calc(100vh - ${TOTAL_HEADER_HEIGHT_PX}px)` }}
+              >
+                <ContextualInsightsPanel
+                  key={insightsTabKey}
+                  activeTab={insightsTabKey}
+                  panelTitle={contextualInsightsPanelTitle}
+                />
+              </aside>
+            )}
           </div>
         </div>
       </div>

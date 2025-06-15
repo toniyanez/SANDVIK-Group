@@ -10,10 +10,10 @@ importers:
     dependencies:
       '@ai-sdk/openai':
         specifier: latest
-        version: 1.3.22(zod@3.25.63)
+        version: 1.3.22(zod@3.25.64)
       '@hookform/resolvers':
         specifier: ^3.9.1
-        version: 3.9.1(react-hook-form@7.57.0(react@19.0.0))
+        version: 3.9.1(react-hook-form@7.58.0(react@19.0.0))
       '@radix-ui/react-accordion':
         specifier: latest
         version: 1.2.11(@types/react-dom@19.0.0)(@types/react@19.0.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
@@ -97,16 +97,16 @@ importers:
         version: 1.2.7(@types/react-dom@19.0.0)(@types/react@19.0.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       ai:
         specifier: latest
-        version: 4.3.16(react@19.0.0)(zod@3.25.63)
+        version: 4.3.16(react@19.0.0)(zod@3.25.64)
       autoprefixer:
         specifier: ^10.4.20
         version: 10.4.20(postcss@8.5.0)
       chart.js:
         specifier: latest
-        version: 4.4.9
+        version: 4.5.0
       chartjs-plugin-datalabels:
         specifier: latest
-        version: 2.2.0(chart.js@4.4.9)
+        version: 2.2.0(chart.js@4.5.0)
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -142,7 +142,7 @@ importers:
         version: 19.0.0
       react-chartjs-2:
         specifier: latest
-        version: 5.3.0(chart.js@4.4.9)(react@19.0.0)
+        version: 5.3.0(chart.js@4.5.0)(react@19.0.0)
       react-day-picker:
         specifier: latest
         version: 9.7.0(react@19.0.0)
@@ -151,16 +151,16 @@ importers:
         version: 19.0.0(react@19.0.0)
       react-hook-form:
         specifier: latest
-        version: 7.57.0(react@19.0.0)
+        version: 7.58.0(react@19.0.0)
       react-resizable-panels:
         specifier: latest
-        version: 3.0.2(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+        version: 3.0.3(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       react-simple-maps:
         specifier: latest
         version: 3.0.0(prop-types@15.8.1)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       react-tooltip:
         specifier: latest
-        version: 5.29.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+        version: 5.29.1(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       recharts:
         specifier: latest
         version: 2.15.3(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
@@ -178,7 +178,7 @@ importers:
         version: 1.1.2(@types/react-dom@19.0.0)(@types/react@19.0.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       zod:
         specifier: latest
-        version: 3.25.63
+        version: 3.25.64
     devDependencies:
       '@types/node':
         specifier: ^22
@@ -1212,15 +1212,15 @@ packages:
     resolution: {integrity: sha512-QOSvevhslijgYwRx6Rv7zKdMF8lbRmx+uQGx2+vDc+KI/eBnsy9kit5aj23AgGu3pa4t9AgwbnXWqS+iOY+2aA==}
     engines: {node: '>= 6'}
 
-  caniuse-lite@1.0.30001722:
-    resolution: {integrity: sha512-DCQHBBZtiK6JVkAGw7drvAMK0Q0POD/xZvEmDp6baiMMP6QXXk9HpD6mNYBZWhOPG6LvIDb82ITqtWjhDckHCA==}
+  caniuse-lite@1.0.30001723:
+    resolution: {integrity: sha512-1R/elMjtehrFejxwmexeXAtae5UO9iSyFn6G/I806CYC/BLyyBk1EPhrKBkWhy6wM6Xnm47dSJQec+tLJ39WHw==}
 
   chalk@5.4.1:
     resolution: {integrity: sha512-zgVZuo2WcZgfUEmsn6eO3kINexW8RAE4maiQ8QNs8CtpPCSyMiYsULR3HQYkm3w8FIA3SberyMJMSldGsW+U3w==}
     engines: {node: ^12.17.0 || ^14.13 || >=16.0.0}
 
-  chart.js@4.4.9:
-    resolution: {integrity: sha512-EyZ9wWKgpAU0fLJ43YAEIF8sr5F2W3LqbS40ZJyHIner2lY14ufqv2VMp69MAiZ2rpwxEUxEhIH/0U3xyRynxg==}
+  chart.js@4.5.0:
+    resolution: {integrity: sha512-aYeC/jDgSEx8SHWZvANYMioYMZ2KX02W6f6uVfyteuCGcadDLcYVHdfdygsTQkQ4TKn5lghoojAsPj5pu0SnvQ==}
     engines: {pnpm: '>=8'}
 
   chartjs-plugin-datalabels@2.2.0:
@@ -1398,8 +1398,8 @@ packages:
   eastasianwidth@0.2.0:
     resolution: {integrity: sha512-I88TYZWc9XiYHRQ4/3c5rjjfgkjhLyW2luGIheGERbNQ6OY7yTybanSpDXZa8y7VUP9YmDcYa+eyq4ca7iLqWA==}
 
-  electron-to-chromium@1.5.166:
-    resolution: {integrity: sha512-QPWqHL0BglzPYyJJ1zSSmwFFL6MFXhbACOCcsCdUMCkzPdS9/OIBVxg516X/Ado2qwAq8k0nJJ7phQPCqiaFAw==}
+  electron-to-chromium@1.5.167:
+    resolution: {integrity: sha512-LxcRvnYO5ez2bMOFpbuuVuAI5QNeY1ncVytE/KXaL6ZNfzX1yPlAO0nSOyIHx2fVAuUprMqPs/TdVhUFZy7SIQ==}
 
   embla-carousel-react@8.6.0:
     resolution: {integrity: sha512-0/PjqU7geVmo6F734pmPqpyHqiM99olvyecY7zdweCw+6tKEXnrE90pBiBbMMU8s5tICemzpQ3hi5EpxzGW+JA==}
@@ -1727,8 +1727,8 @@ packages:
     peerDependencies:
       react: ^19.0.0
 
-  react-hook-form@7.57.0:
-    resolution: {integrity: sha512-RbEks3+cbvTP84l/VXGUZ+JMrKOS8ykQCRYdm5aYsxnDquL0vspsyNhGRO7pcH6hsZqWlPOjLye7rJqdtdAmlg==}
+  react-hook-form@7.58.0:
+    resolution: {integrity: sha512-zGijmEed35oNfOfy7ub99jfjkiLhHwA3dl5AgyKdWC6QQzhnc7tkWewSa+T+A2EpLrc6wo5DUoZctS9kufWJjA==}
     engines: {node: '>=18.0.0'}
     peerDependencies:
       react: ^16.8.0 || ^17 || ^18 || ^19
@@ -1759,8 +1759,8 @@ packages:
       '@types/react':
         optional: true
 
-  react-resizable-panels@3.0.2:
-    resolution: {integrity: sha512-j4RNII75fnHkLnbsTb5G5YsDvJsSEZrJK2XSF2z0Tc2jIonYlIVir/Yh/5LvcUFCfs1HqrMAoiBFmIrRjC4XnA==}
+  react-resizable-panels@3.0.3:
+    resolution: {integrity: sha512-7HA8THVBHTzhDK4ON0tvlGXyMAJN1zBeRpuyyremSikgYh2ku6ltD7tsGQOcXx4NKPrZtYCm/5CBr+dkruTGQw==}
     peerDependencies:
       react: ^16.14.0 || ^17.0.0 || ^18.0.0 || ^19.0.0 || ^19.0.0-rc
       react-dom: ^16.14.0 || ^17.0.0 || ^18.0.0 || ^19.0.0 || ^19.0.0-rc
@@ -1788,8 +1788,8 @@ packages:
       '@types/react':
         optional: true
 
-  react-tooltip@5.29.0:
-    resolution: {integrity: sha512-L8yDheA9C8rNL4762MQE3h+08URWqSg1Mn+fgjuaELohEzZg+OhxHWtUparb889ni1WdLFd32uo17XBuoguSdQ==}
+  react-tooltip@5.29.1:
+    resolution: {integrity: sha512-rmJmEb/p99xWhwmVT7F7riLG08wwKykjHiMGbDPloNJk3tdI73oHsVOwzZ4SRjqMdd5/xwb/4nmz0RcoMfY7Bw==}
     peerDependencies:
       react: '>=16.14.0'
       react-dom: '>=16.14.0'
@@ -2035,44 +2035,44 @@ packages:
     peerDependencies:
       zod: ^3.24.1
 
-  zod@3.25.63:
-    resolution: {integrity: sha512-3ttCkqhtpncYXfP0f6dsyabbYV/nEUW+Xlu89jiXbTBifUfjaSqXOG6JnQPLtqt87n7KAmnMqcjay6c0Wq0Vbw==}
+  zod@3.25.64:
+    resolution: {integrity: sha512-hbP9FpSZf7pkS7hRVUrOjhwKJNyampPgtXKc3AN6DsWtoHsg2Sb4SQaS4Tcay380zSwd2VPo9G9180emBACp5g==}
 
 snapshots:
 
-  '@ai-sdk/openai@1.3.22(zod@3.25.63)':
+  '@ai-sdk/openai@1.3.22(zod@3.25.64)':
     dependencies:
       '@ai-sdk/provider': 1.1.3
-      '@ai-sdk/provider-utils': 2.2.8(zod@3.25.63)
-      zod: 3.25.63
+      '@ai-sdk/provider-utils': 2.2.8(zod@3.25.64)
+      zod: 3.25.64
 
-  '@ai-sdk/provider-utils@2.2.8(zod@3.25.63)':
+  '@ai-sdk/provider-utils@2.2.8(zod@3.25.64)':
     dependencies:
       '@ai-sdk/provider': 1.1.3
       nanoid: 3.3.11
       secure-json-parse: 2.7.0
-      zod: 3.25.63
+      zod: 3.25.64
 
   '@ai-sdk/provider@1.1.3':
     dependencies:
       json-schema: 0.4.0
 
-  '@ai-sdk/react@1.2.12(react@19.0.0)(zod@3.25.63)':
+  '@ai-sdk/react@1.2.12(react@19.0.0)(zod@3.25.64)':
     dependencies:
-      '@ai-sdk/provider-utils': 2.2.8(zod@3.25.63)
-      '@ai-sdk/ui-utils': 1.2.11(zod@3.25.63)
+      '@ai-sdk/provider-utils': 2.2.8(zod@3.25.64)
+      '@ai-sdk/ui-utils': 1.2.11(zod@3.25.64)
       react: 19.0.0
       swr: 2.3.3(react@19.0.0)
       throttleit: 2.1.0
     optionalDependencies:
-      zod: 3.25.63
+      zod: 3.25.64
 
-  '@ai-sdk/ui-utils@1.2.11(zod@3.25.63)':
+  '@ai-sdk/ui-utils@1.2.11(zod@3.25.64)':
     dependencies:
       '@ai-sdk/provider': 1.1.3
-      '@ai-sdk/provider-utils': 2.2.8(zod@3.25.63)
-      zod: 3.25.63
-      zod-to-json-schema: 3.24.5(zod@3.25.63)
+      '@ai-sdk/provider-utils': 2.2.8(zod@3.25.64)
+      zod: 3.25.64
+      zod-to-json-schema: 3.24.5(zod@3.25.64)
 
   '@alloc/quick-lru@5.2.0': {}
 
@@ -2102,9 +2102,9 @@ snapshots:
 
   '@floating-ui/utils@0.2.9': {}
 
-  '@hookform/resolvers@3.9.1(react-hook-form@7.57.0(react@19.0.0))':
+  '@hookform/resolvers@3.9.1(react-hook-form@7.58.0(react@19.0.0))':
     dependencies:
-      react-hook-form: 7.57.0(react@19.0.0)
+      react-hook-form: 7.58.0(react@19.0.0)
 
   '@img/sharp-darwin-arm64@0.33.5':
     optionalDependencies:
@@ -2969,15 +2969,15 @@ snapshots:
     dependencies:
       csstype: 3.1.3
 
-  ai@4.3.16(react@19.0.0)(zod@3.25.63):
+  ai@4.3.16(react@19.0.0)(zod@3.25.64):
     dependencies:
       '@ai-sdk/provider': 1.1.3
-      '@ai-sdk/provider-utils': 2.2.8(zod@3.25.63)
-      '@ai-sdk/react': 1.2.12(react@19.0.0)(zod@3.25.63)
-      '@ai-sdk/ui-utils': 1.2.11(zod@3.25.63)
+      '@ai-sdk/provider-utils': 2.2.8(zod@3.25.64)
+      '@ai-sdk/react': 1.2.12(react@19.0.0)(zod@3.25.64)
+      '@ai-sdk/ui-utils': 1.2.11(zod@3.25.64)
       '@opentelemetry/api': 1.9.0
       jsondiffpatch: 0.6.0
-      zod: 3.25.63
+      zod: 3.25.64
     optionalDependencies:
       react: 19.0.0
 
@@ -3007,7 +3007,7 @@ snapshots:
   autoprefixer@10.4.20(postcss@8.5.0):
     dependencies:
       browserslist: 4.25.0
-      caniuse-lite: 1.0.30001722
+      caniuse-lite: 1.0.30001723
       fraction.js: 4.3.7
       normalize-range: 0.1.2
       picocolors: 1.1.1
@@ -3028,8 +3028,8 @@ snapshots:
 
   browserslist@4.25.0:
     dependencies:
-      caniuse-lite: 1.0.30001722
-      electron-to-chromium: 1.5.166
+      caniuse-lite: 1.0.30001723
+      electron-to-chromium: 1.5.167
       node-releases: 2.0.19
       update-browserslist-db: 1.1.3(browserslist@4.25.0)
 
@@ -3039,17 +3039,17 @@ snapshots:
 
   camelcase-css@2.0.1: {}
 
-  caniuse-lite@1.0.30001722: {}
+  caniuse-lite@1.0.30001723: {}
 
   chalk@5.4.1: {}
 
-  chart.js@4.4.9:
+  chart.js@4.5.0:
     dependencies:
       '@kurkle/color': 0.3.4
 
-  chartjs-plugin-datalabels@2.2.0(chart.js@4.4.9):
+  chartjs-plugin-datalabels@2.2.0(chart.js@4.5.0):
     dependencies:
-      chart.js: 4.4.9
+      chart.js: 4.5.0
 
   chokidar@3.6.0:
     dependencies:
@@ -3225,7 +3225,7 @@ snapshots:
 
   eastasianwidth@0.2.0: {}
 
-  electron-to-chromium@1.5.166: {}
+  electron-to-chromium@1.5.167: {}
 
   embla-carousel-react@8.6.0(react@19.0.0):
     dependencies:
@@ -3398,7 +3398,7 @@ snapshots:
       '@swc/counter': 0.1.3
       '@swc/helpers': 0.5.15
       busboy: 1.6.0
-      caniuse-lite: 1.0.30001722
+      caniuse-lite: 1.0.30001723
       postcss: 8.4.31
       react: 19.0.0
       react-dom: 19.0.0(react@19.0.0)
@@ -3498,9 +3498,9 @@ snapshots:
 
   queue-microtask@1.2.3: {}
 
-  react-chartjs-2@5.3.0(chart.js@4.4.9)(react@19.0.0):
+  react-chartjs-2@5.3.0(chart.js@4.5.0)(react@19.0.0):
     dependencies:
-      chart.js: 4.4.9
+      chart.js: 4.5.0
       react: 19.0.0
 
   react-day-picker@9.7.0(react@19.0.0):
@@ -3515,7 +3515,7 @@ snapshots:
       react: 19.0.0
       scheduler: 0.25.0
 
-  react-hook-form@7.57.0(react@19.0.0):
+  react-hook-form@7.58.0(react@19.0.0):
     dependencies:
       react: 19.0.0
 
@@ -3542,7 +3542,7 @@ snapshots:
     optionalDependencies:
       '@types/react': 19.0.0
 
-  react-resizable-panels@3.0.2(react-dom@19.0.0(react@19.0.0))(react@19.0.0):
+  react-resizable-panels@3.0.3(react-dom@19.0.0(react@19.0.0))(react@19.0.0):
     dependencies:
       react: 19.0.0
       react-dom: 19.0.0(react@19.0.0)
@@ -3573,7 +3573,7 @@ snapshots:
     optionalDependencies:
       '@types/react': 19.0.0
 
-  react-tooltip@5.29.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0):
+  react-tooltip@5.29.1(react-dom@19.0.0(react@19.0.0))(react@19.0.0):
     dependencies:
       '@floating-ui/dom': 1.7.1
       classnames: 2.5.1
@@ -3859,8 +3859,8 @@ snapshots:
 
   yaml@2.8.0: {}
 
-  zod-to-json-schema@3.24.5(zod@3.25.63):
+  zod-to-json-schema@3.24.5(zod@3.25.64):
     dependencies:
-      zod: 3.25.63
+      zod: 3.25.64
 
-  zod@3.25.63: {}
+  zod@3.25.64: {}
