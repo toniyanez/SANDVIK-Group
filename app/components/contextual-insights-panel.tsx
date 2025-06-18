@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -17,6 +17,9 @@ import {
   Calendar,
   Loader2,
   Target,
+  Sparkles,
+  RefreshCw,
+  BarChart3,
 } from "lucide-react"
 
 interface Insight {
@@ -103,6 +106,12 @@ const typeIcons = {
   "Supply Risk": AlertTriangle,
   "Cost Optimization": TrendingUp,
   "Production Risk": AlertTriangle,
+  "Financial Performance": BarChart3,
+  "Profitability Analysis": TrendingUp,
+  "Strategic Planning": Lightbulb,
+  "Innovation Strategy": Lightbulb,
+  "Strategic Overview": BarChart3,
+  "Market Analysis": BarChart3,
 }
 
 export default function ContextualInsightsPanel({
@@ -112,34 +121,58 @@ export default function ContextualInsightsPanel({
 }: ContextualInsightsPanelProps) {
   const [data, setData] = useState<ContextualInsightsData | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [hasLoaded, setHasLoaded] = useState(false)
+  const [lastRefresh, setLastRefresh] = useState<Date | null>(null)
 
-  useEffect(() => {
-    const fetchInsights = async () => {
-      setIsLoading(true)
-      try {
-        let url = `/api/contextual-insights?activeTab=${activeTab}`
+  // Remove automatic loading on mount/context change
+  // useEffect(() => {
+  //   fetchInsights()
+  // }, [activeTab, simulationContext])
 
-        // Add simulation context if available
-        if (simulationContext) {
-          url += `&simulationContext=${encodeURIComponent(JSON.stringify(simulationContext))}`
-        }
+  const fetchInsights = async () => {
+    setIsLoading(true)
+    try {
+      let url = `/api/contextual-insights?activeTab=${activeTab}`
 
-        const response = await fetch(url)
-        if (response.ok) {
-          const insightsData = await response.json()
-          setData(insightsData)
-        } else {
-          console.error("Failed to fetch insights:", response.status, response.statusText)
-        }
-      } catch (error) {
-        console.error("Failed to fetch contextual insights:", error)
-      } finally {
-        setIsLoading(false)
+      // Add simulation context if available
+      if (simulationContext) {
+        url += `&simulationContext=${encodeURIComponent(JSON.stringify(simulationContext))}`
       }
-    }
 
+      console.log("🔄 Fetching contextual insights...", { activeTab, scenario: simulationContext?.scenarioName })
+
+      const response = await fetch(url)
+      if (response.ok) {
+        const insightsData = await response.json()
+        setData(insightsData)
+        setLastRefresh(new Date())
+        setHasLoaded(true)
+        console.log("✅ Contextual insights loaded:", {
+          insights: insightsData.insights?.length || 0,
+          aiInsights: insightsData.aiInsights?.length || 0,
+          curatedInsights: insightsData.curatedInsights?.length || 0,
+          news: insightsData.newsArticles?.length || 0,
+          source: insightsData.newsArticles?.[0]?.source || "fallback",
+        })
+      } else {
+        console.error("❌ Failed to fetch insights:", response.status, response.statusText)
+      }
+    } catch (error) {
+      console.error("❌ Failed to fetch contextual insights:", error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // Manual load function
+  const handleLoadInsights = () => {
     fetchInsights()
-  }, [activeTab, simulationContext])
+  }
+
+  // Refresh function for already loaded insights
+  const handleRefresh = () => {
+    fetchInsights()
+  }
 
   const formatTimeAgo = (dateString: string) => {
     const date = new Date(dateString)
@@ -258,6 +291,56 @@ export default function ContextualInsightsPanel({
     )
   }
 
+  // Show empty state with load button if no data loaded yet
+  if (!hasLoaded && !isLoading) {
+    return (
+      <div className="h-full flex flex-col">
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex items-center gap-2 mb-2">
+            <Lightbulb className="h-5 w-5 text-blue-600" />
+            <h2 className="text-lg font-semibold text-gray-900">{panelTitle || `Insights for ${activeTab}`}</h2>
+            {simulationContext?.scenarioName && (
+              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                <Target className="h-3 w-3 mr-1" />
+                {simulationContext.scenarioName}
+              </Badge>
+            )}
+          </div>
+          <p className="text-xs text-gray-600">
+            {simulationContext?.scenarioName
+              ? `Ready to analyze contextual insights for your simulation scenario`
+              : `Ready to analyze real-time insights based on current market conditions`}
+          </p>
+        </div>
+
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center space-y-4 max-w-sm">
+            <div className="w-16 h-16 mx-auto bg-blue-50 rounded-full flex items-center justify-center">
+              <Sparkles className="h-8 w-8 text-blue-600" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Generate Contextual Insights</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Get AI-powered insights, real-time news analysis, and strategic recommendations tailored to your current
+                view and scenario.
+              </p>
+              <Button onClick={handleLoadInsights} className="w-full" size="lg">
+                <Sparkles className="h-4 w-4 mr-2" />
+                Load Insights & News
+              </Button>
+            </div>
+            <div className="text-xs text-gray-500">
+              <p>• Real-time news from multiple sources</p>
+              <p>• AI-powered strategic recommendations</p>
+              <p>• Scenario-specific risk analysis</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Show loading state
   if (isLoading) {
     return (
       <div className="p-6">
@@ -269,55 +352,78 @@ export default function ContextualInsightsPanel({
     )
   }
 
+  // Show error state
   if (!data) {
     return (
       <div className="p-6">
-        <div className="text-center text-gray-500">
-          <p className="text-sm">Failed to load insights</p>
+        <div className="text-center text-gray-500 space-y-4">
+          <AlertTriangle className="h-8 w-8 mx-auto text-gray-400" />
+          <div>
+            <p className="text-sm font-medium">Failed to load insights</p>
+            <p className="text-xs text-gray-400 mt-1">Please try again</p>
+          </div>
+          <Button onClick={handleLoadInsights} variant="outline" size="sm">
+            <RefreshCw className="h-3 w-3 mr-1" />
+            Retry
+          </Button>
         </div>
       </div>
     )
   }
 
   // Calculate correct totals
-  const totalInsights = data.insights.length
+  const totalRegularInsights = data.insights.length
   const totalAiInsights = data.aiInsights.length
   const totalCuratedInsights = data.curatedInsights.length
+  const totalAllInsights = totalRegularInsights + totalAiInsights + totalCuratedInsights
   const totalNews = data.newsArticles.length
-  const totalAll = totalInsights + totalAiInsights + totalCuratedInsights + totalNews
+  const totalAll = totalAllInsights + totalNews
 
   return (
     <div className="h-full flex flex-col">
       <div className="p-6 border-b border-gray-200">
-        <div className="flex items-center gap-2 mb-2">
-          <Lightbulb className="h-5 w-5 text-blue-600" />
-          <h2 className="text-lg font-semibold text-gray-900">{panelTitle || `Insights for ${activeTab}`}</h2>
-          {data.metadata.scenarioName && (
-            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-              <Target className="h-3 w-3 mr-1" />
-              {data.metadata.scenarioName}
-            </Badge>
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <Lightbulb className="h-5 w-5 text-blue-600" />
+            <h2 className="text-lg font-semibold text-gray-900">{panelTitle || `Insights for ${activeTab}`}</h2>
+            {data?.metadata.scenarioName && (
+              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                <Target className="h-3 w-3 mr-1" />
+                {data.metadata.scenarioName}
+              </Badge>
+            )}
+          </div>
+          <Button variant="ghost" size="sm" onClick={handleRefresh} disabled={isLoading} className="text-xs">
+            {isLoading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <RefreshCw className="h-3 w-3 mr-1" />}
+            Refresh
+          </Button>
+        </div>
+        <div className="space-y-1">
+          <p className="text-xs text-gray-600">
+            {data?.metadata.scenarioName
+              ? `Contextual analysis for your simulation scenario`
+              : `Real-time analysis and recommendations based on current market conditions`}
+          </p>
+          {lastRefresh && (
+            <p className="text-xs text-gray-500">
+              Last updated: {lastRefresh.toLocaleTimeString()}
+              {data?.newsArticles?.length > 0 && (
+                <span className="ml-2 text-green-600">• Live news: {data.newsArticles.length} articles</span>
+              )}
+            </p>
           )}
         </div>
-        <p className="text-xs text-gray-600">
-          {data.metadata.scenarioName
-            ? `Contextual analysis for your simulation scenario`
-            : `Real-time analysis and recommendations based on current market conditions`}
-        </p>
       </div>
 
       <div className="flex-1 overflow-y-auto">
         <div className="p-6">
           <Tabs defaultValue="all" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="all" className="text-xs">
                 All ({totalAll})
               </TabsTrigger>
-              <TabsTrigger value="ai" className="text-xs">
-                AI ({totalAiInsights})
-              </TabsTrigger>
-              <TabsTrigger value="curated" className="text-xs">
-                Curated ({totalCuratedInsights})
+              <TabsTrigger value="insights" className="text-xs">
+                Insights ({totalAllInsights})
               </TabsTrigger>
               <TabsTrigger value="news" className="text-xs">
                 News ({totalNews})
@@ -342,24 +448,20 @@ export default function ContextualInsightsPanel({
               )}
             </TabsContent>
 
-            <TabsContent value="ai" className="space-y-4">
-              {data.aiInsights.length > 0 ? (
-                data.aiInsights.map(renderInsight)
+            <TabsContent value="insights" className="space-y-4">
+              {totalAllInsights > 0 ? (
+                <>
+                  {/* Regular insights */}
+                  {data.insights.map(renderInsight)}
+                  {/* AI insights */}
+                  {data.aiInsights.map(renderInsight)}
+                  {/* Curated insights */}
+                  {data.curatedInsights.map(renderInsight)}
+                </>
               ) : (
                 <div className="text-center text-gray-500 py-8">
-                  <Brain className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                  <p className="text-sm">No AI insights available</p>
-                </div>
-              )}
-            </TabsContent>
-
-            <TabsContent value="curated" className="space-y-4">
-              {data.curatedInsights.length > 0 ? (
-                data.curatedInsights.map(renderInsight)
-              ) : (
-                <div className="text-center text-gray-500 py-8">
-                  <BookOpen className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                  <p className="text-sm">No curated insights available</p>
+                  <Lightbulb className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                  <p className="text-sm">No insights available</p>
                 </div>
               )}
             </TabsContent>

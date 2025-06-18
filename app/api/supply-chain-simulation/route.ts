@@ -80,7 +80,7 @@ export async function POST(request: Request) {
     const baselineSMMSEKM = 48600
     const baselineSRPSEKM = 10700
     const baselineOperatingMarginPercent = 15.2
-    const baselineSupplyChainCostsSEKM = 35000 // Estimated realistic baseline supply chain costs
+    const baselineSupplyChainCostsSEKM = 35000 // Realistic baseline supply chain costs
 
     const result = await generateObject({
       model: openai("gpt-4o"),
@@ -88,7 +88,11 @@ export async function POST(request: Request) {
       prompt: `
         You are an expert supply chain simulation engine for Sandvik Group. Analyze the following scenario and provide detailed impact analysis.
         
-        CRITICAL: ENSURE MATHEMATICAL CONSISTENCY AND REALISTIC BUSINESS LOGIC.
+        CRITICAL REQUIREMENTS:
+        1. ALL MONETARY VALUES MUST BE IN SEK MILLIONS AND REALISTIC
+        2. SUPPLY CHAIN COSTS CANNOT BE ZERO - MUST BE BETWEEN 25,000-60,000 SEK MILLIONS
+        3. BASELINE SUPPLY CHAIN COSTS ARE ${baselineSupplyChainCostsSEKM} SEK MILLIONS
+        4. MARGIN IMPACTS MUST BE MATHEMATICALLY CONSISTENT WITH COST AND REVENUE CHANGES
         
         ALL MONETARY VALUES IN THE RESPONSE MUST BE IN SEK MILLIONS.
         ALL PERCENTAGE CHANGES (e.g. revenueChangePercent, costChangePercent, revenueImpactPercent) MUST BE PERCENTAGE POINTS (e.g., -2.7 for -2.7%, 5.0 for +5.0%).
@@ -98,7 +102,7 @@ export async function POST(request: Request) {
         SANDVIK BASELINE DATA (all monetary values in SEK Millions):
         - Total Revenue: ${baselineRevenueSEKM} (SMRS: ${baselineSMRSSEKM}, SMMS: ${baselineSMMSEKM}, SRPS: ${baselineSRPSEKM})
         - Operating Margin: ${baselineOperatingMarginPercent}%
-        - Supply Chain Costs: ${baselineSupplyChainCostsSEKM}
+        - Supply Chain Costs: ${baselineSupplyChainCostsSEKM} (MANDATORY BASELINE - NEVER ZERO)
         - Business Areas (Revenue in SEK Millions): SMRS (${baselineSMRSSEKM}), SMMS (${baselineSMMSEKM}), SRPS (${baselineSRPSEKM})
 
         SCENARIO TO SIMULATE: ${scenarioContext} 
@@ -106,50 +110,93 @@ export async function POST(request: Request) {
         
         PARAMETERS: ${JSON.stringify(parameters, null, 2)}
 
-        BUSINESS LOGIC REQUIREMENTS:
-        1. Supply chain costs CANNOT be zero - they must be realistic positive values
-        2. Operating margin CANNOT be zero unless the company is making no profit
-        3. Cost changes should reflect the scenario (green transition = higher R&D/compliance costs)
-        4. Margin changes should reflect the balance between revenue growth and cost increases
-        5. All values must be mathematically consistent and business-realistic
+        MANDATORY COST AND MARGIN LOGIC:
+        
+        COST IMPACT RULES:
+        - Supply chain costs represent ~28% of total revenue (${baselineSupplyChainCostsSEKM}M of ${baselineRevenueSEKM}M)
+        - Cost increases directly impact operating margins
+        - Large cost increases (>20%) should cause significant margin compression (>3 p.p.)
+        
+        MARGIN CALCULATION RULES:
+        - Operating Margin = (Revenue - Total Costs) / Revenue * 100
+        - If supply chain costs increase by X%, and they represent 28% of revenue, margin impact ≈ X% * 0.28
+        - Example: +30% supply chain cost increase should reduce margin by ~8.4 p.p. (30% * 0.28)
+        
+        BASELINE METRICS REQUIREMENTS:
+        - baselineMetrics.revenue = ${baselineRevenueSEKM}
+        - baselineMetrics.operatingMargin = ${baselineOperatingMarginPercent}
+        - baselineMetrics.supplyChainCosts = ${baselineSupplyChainCostsSEKM} (NEVER ZERO)
 
-        SCENARIO-SPECIFIC COST AND MARGIN LOGIC:
-        - "Green Transition": Higher R&D costs (+8-15%), compliance costs (+5-10%), but premium pricing helps margins
-        - "Crisis/Disruption": Higher logistics costs (+15-30%), material costs (+10-25%), margin compression
-        - "Recession": Cost reduction efforts (-5-10%), but margin pressure from lower volumes
-        - "Trade War": Higher tariff costs (+10-20%), supply chain diversification costs (+5-15%)
-
-        CALCULATION STEPS YOU MUST FOLLOW:
-        1. Calculate realistic business area revenue impacts
+        MATHEMATICAL CONSISTENCY VALIDATION:
+        1. Calculate business area revenue impacts first
         2. Sum to get total simulated revenue
-        3. Calculate scenario-appropriate cost changes (NEVER zero or negative unless explicitly justified)
-        4. Calculate new operating margin based on: (New Revenue - New Costs) / New Revenue * 100
-        5. Ensure margin change reflects both revenue and cost impacts
-        6. Validate all values are realistic for a large industrial company
+        3. Apply realistic cost changes based on scenario severity
+        4. Calculate margin impact using: (Cost Change % * Cost Share of Revenue)
+        5. Ensure margin change reflects both revenue and cost and revenue impacts realistically
 
-        VALIDATION RULES:
-        - Supply chain costs must be between 20,000 and 60,000 SEK Millions (realistic range)
-        - Operating margin must be between -5% and 25% (realistic business range)
-        - Cost changes should align with scenario type (green = higher costs, efficiency = lower costs)
-        - Margin changes should reflect the net effect of revenue and cost changes
-
-        EXAMPLES OF REALISTIC OUTPUTS:
-        Green Transition Scenario:
-        - Revenue: +10-15% (premium products, higher demand)
-        - Costs: +8-12% (R&D, compliance, sustainable materials)
-        - Margin: +1-3 p.p. (premium pricing offsets higher costs)
-
-        Supply Crisis Scenario:
-        - Revenue: -5-15% (supply constraints, lost sales)
-        - Costs: +15-25% (alternative suppliers, expedited shipping)
-        - Margin: -3-8 p.p. (cost increases exceed revenue impact)
-
-        Provide a comprehensive simulation with REALISTIC and CONSISTENT financial metrics.
+        Provide a comprehensive simulation with MATHEMATICALLY CONSISTENT financial metrics.
+        REMEMBER: Large cost increases must result in proportional margin compression.
       `,
     })
 
     // Enhanced validation and correction logic
     const simulatedResult = result.object
+
+    // CRITICAL FIX: Ensure baseline costs are never zero
+    if (!simulatedResult.baselineMetrics.supplyChainCosts || simulatedResult.baselineMetrics.supplyChainCosts <= 0) {
+      console.log("FIXING: Baseline supply chain costs were zero or invalid")
+      simulatedResult.baselineMetrics.supplyChainCosts = baselineSupplyChainCostsSEKM
+    }
+
+    // CRITICAL FIX: Ensure simulated costs are realistic
+    if (!simulatedResult.simulatedMetrics.supplyChainCosts || simulatedResult.simulatedMetrics.supplyChainCosts <= 0) {
+      console.log("FIXING: Simulated supply chain costs were zero or invalid")
+
+      // SCENARIO-SPECIFIC COST AND MARGIN LOGIC
+      let costMultiplier = 1.0
+
+      const scenarioLower = scenarioContext.toLowerCase()
+
+      if (
+        scenarioLower.includes("green") ||
+        scenarioLower.includes("sustainable") ||
+        scenarioLower.includes("transition")
+      ) {
+        // Green transition is a POSITIVE opportunity for Sandvik
+        costMultiplier = 1.05 // Only 5% cost increase (R&D investments, certification)
+        console.log("GREEN TRANSITION: Applying positive opportunity logic")
+      } else if (scenarioLower.includes("spain") && scenarioLower.includes("close")) {
+        costMultiplier = 1.15 // 15% increase for Spain closure (moderate impact)
+      } else if (scenarioLower.includes("cobalt") || scenarioLower.includes("material")) {
+        costMultiplier = 1.25 // 25% increase for material crisis
+      } else if (scenarioLower.includes("crisis") || scenarioLower.includes("disruption")) {
+        costMultiplier = 1.3 // 30% increase for general crisis
+      } else if (scenarioLower.includes("recession")) {
+        costMultiplier = 0.95 // 5% decrease for recession
+      } else {
+        costMultiplier = 1.1 // 10% increase for general scenarios
+      }
+
+      simulatedResult.simulatedMetrics.supplyChainCosts = baselineSupplyChainCostsSEKM * costMultiplier
+      simulatedResult.simulatedMetrics.costChangePercent = (costMultiplier - 1) * 100
+    }
+
+    // SCENARIO-SPECIFIC MARGIN ADJUSTMENTS (moved outside the conditional block)
+    let marginImpactAdjustment = 0 // Additional margin benefit from premium pricing
+
+    const scenarioLower = scenarioContext.toLowerCase()
+
+    if (
+      scenarioLower.includes("green") ||
+      scenarioLower.includes("sustainable") ||
+      scenarioLower.includes("transition")
+    ) {
+      marginImpactAdjustment = 2.0 // +2 p.p. margin benefit from premium pricing
+    } else if (scenarioLower.includes("regionalization") && scenarioLower.includes("success")) {
+      marginImpactAdjustment = 1.5 // +1.5 p.p. from operational efficiency
+    } else if (scenarioLower.includes("recession")) {
+      marginImpactAdjustment = -0.5 // -0.5 p.p. from price pressure
+    }
 
     // Calculate expected total revenue from business area impacts
     let expectedTotalRevenue = baselineRevenueSEKM
@@ -173,70 +220,47 @@ export async function POST(request: Request) {
         (simulatedResult.simulatedMetrics.absoluteRevenueChangeSEKM / baselineRevenueSEKM) * 100
     }
 
-    // Fix unrealistic cost and margin values
-    if (
-      simulatedResult.simulatedMetrics.supplyChainCosts <= 0 ||
-      simulatedResult.simulatedMetrics.supplyChainCosts < 20000
-    ) {
-      console.log("Correcting unrealistic supply chain costs")
+    // CRITICAL FIX: Recalculate operating margin with proper mathematical relationship
+    const newRevenue = simulatedResult.simulatedMetrics.revenue
+    const newSupplyChainCosts = simulatedResult.simulatedMetrics.supplyChainCosts
+    const costChangePercent = simulatedResult.simulatedMetrics.costChangePercent
 
-      // Determine realistic cost change based on scenario type
-      let costChangePercent = 0
-      const scenarioLower = scenarioContext.toLowerCase()
+    // Supply chain costs represent ~28% of total revenue
+    const supplyChainCostShare = baselineSupplyChainCostsSEKM / baselineRevenueSEKM // ~0.28
 
-      if (
-        scenarioLower.includes("green") ||
-        scenarioLower.includes("transition") ||
-        scenarioLower.includes("sustainable")
-      ) {
-        costChangePercent = 8 + Math.random() * 7 // 8-15% increase for green transition
-      } else if (scenarioLower.includes("crisis") || scenarioLower.includes("disruption")) {
-        costChangePercent = 15 + Math.random() * 15 // 15-30% increase for crisis
-      } else if (scenarioLower.includes("recession")) {
-        costChangePercent = -5 + Math.random() * 10 // -5% to +5% for recession
-      } else {
-        costChangePercent = -2 + Math.random() * 12 // -2% to +10% for general scenarios
-      }
+    // Calculate margin impact: cost increase % * cost share of revenue
+    const marginImpactFromCosts = (costChangePercent / 100) * supplyChainCostShare * 100 // Convert to percentage points
 
-      simulatedResult.simulatedMetrics.costChangePercent = costChangePercent
-      simulatedResult.simulatedMetrics.supplyChainCosts = baselineSupplyChainCostsSEKM * (1 + costChangePercent / 100)
-    }
+    // Calculate margin impact from revenue change (smaller effect)
+    const revenueChangePercent = simulatedResult.simulatedMetrics.revenueChangePercent
+    const marginImpactFromRevenue = revenueChangePercent * 0.1 // Revenue changes have smaller margin impact
 
-    // Fix unrealistic margin values
-    if (
-      simulatedResult.simulatedMetrics.operatingMargin <= 0 &&
-      simulatedResult.simulatedMetrics.revenueChangePercent > -20
-    ) {
-      console.log("Correcting unrealistic operating margin")
+    // Total margin impact
+    const totalMarginImpact = -marginImpactFromCosts + marginImpactFromRevenue
 
-      // Calculate realistic margin based on revenue and cost changes
-      const revenueGrowth = simulatedResult.simulatedMetrics.revenueChangePercent / 100
-      const costGrowth = simulatedResult.simulatedMetrics.costChangePercent / 100
+    // Calculate new operating margin with scenario-specific adjustments
+    const newOperatingMargin = Math.max(
+      2,
+      Math.min(25, baselineOperatingMarginPercent + totalMarginImpact + marginImpactAdjustment),
+    )
 
-      // Simplified margin calculation: if revenue grows faster than costs, margin improves
-      const marginImpact = (revenueGrowth - costGrowth) * 5 // Scaling factor for margin sensitivity
-      const newMargin = Math.max(5, Math.min(25, baselineOperatingMarginPercent + marginImpact))
-
-      simulatedResult.simulatedMetrics.operatingMargin = newMargin
-      simulatedResult.simulatedMetrics.marginChangePercentPoints = newMargin - baselineOperatingMarginPercent
-    }
+    simulatedResult.simulatedMetrics.operatingMargin = newOperatingMargin
+    simulatedResult.simulatedMetrics.marginChangePercentPoints = newOperatingMargin - baselineOperatingMarginPercent
 
     // Ensure cost change percentage is calculated correctly
-    if (simulatedResult.simulatedMetrics.supplyChainCosts > 0) {
-      simulatedResult.simulatedMetrics.costChangePercent =
-        ((simulatedResult.simulatedMetrics.supplyChainCosts - baselineSupplyChainCostsSEKM) /
-          baselineSupplyChainCostsSEKM) *
-        100
-    }
+    simulatedResult.simulatedMetrics.costChangePercent =
+      ((simulatedResult.simulatedMetrics.supplyChainCosts - baselineSupplyChainCostsSEKM) /
+        baselineSupplyChainCostsSEKM) *
+      100
 
-    console.log("Final Simulation Results:", {
+    console.log("Final Corrected Simulation Results:", {
       scenario: simulatedResult.scenarioName,
-      revenueChange: `${simulatedResult.simulatedMetrics.revenueChangePercent.toFixed(1)}%`,
-      newRevenue: `SEK ${simulatedResult.simulatedMetrics.revenue.toFixed(0)}M`,
-      costChange: `${simulatedResult.simulatedMetrics.costChangePercent.toFixed(1)}%`,
+      baselineCosts: `SEK ${simulatedResult.baselineMetrics.supplyChainCosts.toFixed(0)}M`,
       newCosts: `SEK ${simulatedResult.simulatedMetrics.supplyChainCosts.toFixed(0)}M`,
+      costChange: `${simulatedResult.simulatedMetrics.costChangePercent.toFixed(1)}%`,
+      revenueChange: `${simulatedResult.simulatedMetrics.revenueChangePercent.toFixed(1)}%`,
       marginChange: `${simulatedResult.simulatedMetrics.marginChangePercentPoints.toFixed(1)} p.p.`,
-      newMargin: `${simulatedResult.simulatedMetrics.operatingMargin.toFixed(1)}%`,
+      marginImpactFromCosts: `${marginImpactFromCosts.toFixed(1)} p.p.`,
     })
 
     return Response.json(simulatedResult)

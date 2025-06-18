@@ -38,6 +38,23 @@ interface ProcessedNewsArticle {
   relevanceScore: number
 }
 
+// Date filtering constants
+const MAX_ARTICLE_AGE_DAYS = 15
+
+// Helper function to check if article is recent (less than 15 days)
+function isArticleRecent(publishedAt: string): boolean {
+  try {
+    const articleDate = new Date(publishedAt)
+    const now = new Date()
+    const daysDifference = (now.getTime() - articleDate.getTime()) / (1000 * 60 * 60 * 1000 * 24)
+
+    return daysDifference <= MAX_ARTICLE_AGE_DAYS
+  } catch (error) {
+    console.error("Error parsing article date:", publishedAt, error)
+    return false
+  }
+}
+
 // Helper function to categorize news articles
 function categorizeArticle(
   title: string,
@@ -212,8 +229,8 @@ function categorizeArticle(
   }
 }
 
-// Helper function to fetch supply chain news from TheNewsAPI
-async function fetchTheNewsAPISupplyChain(apiKey: string | undefined) {
+// Helper function to fetch supply chain news from TheNewsAPI with date filtering
+async function fetchTheNewsAPISupplyChain(apiKey: string | undefined, context?: any) {
   if (!apiKey) {
     return {
       articles: [],
@@ -222,16 +239,20 @@ async function fetchTheNewsAPISupplyChain(apiKey: string | undefined) {
         lastUpdated: new Date().toISOString(),
         dateRange: "N/A - TheNewsAPI key not configured",
         source: "TheNewsAPI (not configured)",
+        maxAgeDays: MAX_ARTICLE_AGE_DAYS,
       },
     }
   }
 
-  const sevenDaysAgo = new Date()
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
-  const fromDate = sevenDaysAgo.toISOString().split("T")[0]
+  // Set date range to last 15 days
+  const fifteenDaysAgo = new Date()
+  fifteenDaysAgo.setDate(fifteenDaysAgo.getDate() - MAX_ARTICLE_AGE_DAYS)
+  const fromDate = context?.fromDate || fifteenDaysAgo.toISOString().split("T")[0]
+
+  console.log(`📅 TheNewsAPI: Fetching articles from ${fromDate} (max ${MAX_ARTICLE_AGE_DAYS} days old)`)
 
   // Enhanced comprehensive search queries for supply chain news
-  const searchQueries = [
+  const searchQueries = context?.queries || [
     // Major geopolitical events affecting supply chains
     "Middle East shipping logistics supply chain Red Sea",
     "Ukraine Russia supply chain logistics grain energy",
@@ -276,7 +297,10 @@ async function fetchTheNewsAPISupplyChain(apiKey: string | undefined) {
         if (response.ok) {
           const data: TheNewsAPIResponse = await response.json()
           if (data.data && data.data.length > 0) {
-            allArticles.push(...data.data)
+            // Filter articles to ensure they're within 15 days
+            const recentArticles = data.data.filter((article) => isArticleRecent(article.published_at))
+            allArticles.push(...recentArticles)
+            console.log(`📰 Query "${query}": ${data.data.length} total, ${recentArticles.length} recent`)
           }
         } else {
           console.error(`TheNewsAPI error for query: ${query}`, response.status, response.statusText)
@@ -292,7 +316,9 @@ async function fetchTheNewsAPISupplyChain(apiKey: string | undefined) {
     // Remove duplicates and process articles
     const uniqueArticles = allArticles
       .filter((article, index, self) => index === self.findIndex((a) => a.uuid === article.uuid))
-      .filter((article) => article.title && article.description && article.source)
+      .filter(
+        (article) => article.title && article.description && article.source && isArticleRecent(article.published_at),
+      )
       .slice(0, 25) // Limit to 25 most recent
 
     // Process and categorize articles
@@ -327,6 +353,15 @@ async function fetchTheNewsAPISupplyChain(apiKey: string | undefined) {
       return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
     })
 
+    const articleAges = sortedArticles.map((article) => {
+      const days = Math.round((Date.now() - new Date(article.publishedAt).getTime()) / (1000 * 60 * 60 * 24))
+      return days
+    })
+
+    console.log(
+      `✅ TheNewsAPI: Processed ${sortedArticles.length} recent articles, ages: ${articleAges.join(", ")} days`,
+    )
+
     return {
       articles: sortedArticles,
       metadata: {
@@ -334,6 +369,10 @@ async function fetchTheNewsAPISupplyChain(apiKey: string | undefined) {
         lastUpdated: new Date().toISOString(),
         dateRange: `${fromDate} to ${new Date().toISOString().split("T")[0]}`,
         source: "TheNewsAPI",
+        maxAgeDays: MAX_ARTICLE_AGE_DAYS,
+        averageAgeDays:
+          articleAges.length > 0 ? Math.round(articleAges.reduce((a, b) => a + b, 0) / articleAges.length) : 0,
+        allRecent: articleAges.every((age) => age <= MAX_ARTICLE_AGE_DAYS),
       },
     }
   } catch (error) {
@@ -345,6 +384,7 @@ async function fetchTheNewsAPISupplyChain(apiKey: string | undefined) {
         lastUpdated: new Date().toISOString(),
         dateRange: "Error fetching news",
         source: "TheNewsAPI (error)",
+        maxAgeDays: MAX_ARTICLE_AGE_DAYS,
       },
     }
   }
@@ -352,7 +392,21 @@ async function fetchTheNewsAPISupplyChain(apiKey: string | undefined) {
 
 export async function GET(request: NextRequest) {
   try {
-    const newsData = await fetchTheNewsAPISupplyChain(process.env.THENEWSAPI_KEY)
+    const { searchParams } = new URL(request.url)
+    const contextParam = searchParams.get("context")
+
+    let context
+    if (contextParam) {
+      try {
+        context = JSON.parse(decodeURIComponent(contextParam))
+      } catch (e) {
+        console.error("Failed to parse context:", e)
+      }
+    }
+
+    console.log(`🔍 TheNewsAPI: Fetching recent supply chain news (≤${MAX_ARTICLE_AGE_DAYS} days)`)
+
+    const newsData = await fetchTheNewsAPISupplyChain(process.env.THENEWSAPI_KEY, context)
     return NextResponse.json(newsData)
   } catch (error) {
     console.error("TheNewsAPI supply chain news API error:", error)
